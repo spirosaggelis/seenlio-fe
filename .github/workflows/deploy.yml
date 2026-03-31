@@ -1,0 +1,50 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
+          chmod 700 ~/.ssh
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        run: |
+          ssh glow@${{ secrets.SERVER_IP }} << 'EOF'
+            set -e
+            APP_DIR="/home/glow/seenlio/seenlio-fe"
+            REPO_URL="git@github.com:${{ github.repository }}.git"
+
+            # First-time setup: clone if not exists
+            if [ ! -d "$APP_DIR/.git" ]; then
+              mkdir -p "$APP_DIR"
+              git clone "$REPO_URL" "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+
+            # Symlink env file
+            ln -sf /home/glow/seenlio/.env.fe "$APP_DIR/.env"
+
+            # Pull latest
+            git pull origin main
+
+            # Install and build
+            mkdir -p logs
+            npm install --production
+            npm run build
+
+            # Reload PM2
+            pm2 reload ecosystem.config.js --update-env || pm2 start ecosystem.config.js
+
+            echo "=== Frontend Deploy Complete ==="
+            pm2 status
+          EOF

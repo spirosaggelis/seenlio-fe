@@ -1,0 +1,25 @@
+
+> @viral/web@0.1.0 build /home/mamra/repos/viral-products/apps/web
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 5.0s
+  Running TypeScript ...
+Failed to compile.
+
+./src/app/api/dashboard/pipeline/route.ts:55:54
+Type error: Property 'name' does not exist on type '{}'.
+
+[0m [90m 53 |[39m     [36mconst[39m categories [33m=[39m (categoriesRes[33m.[39mdata [33m||[39m [])[33m.[39mmap((c[33m:[39m [33mRecord[39m[33m<[39m[33mstring[39m[33m,[39m unknown[33m>[39m) [33m=>[39m {
+ [90m 54 |[39m       [36mconst[39m attrs [33m=[39m (c [36mas[39m [33mRecord[39m[33m<[39m[33mstring[39m[33m,[39m unknown[33m>[39m)[33m.[39mattributes [33m||[39m c[33m;[39m
+[31m[1m>[22m[39m[90m 55 |[39m       [36mreturn[39m { id[33m:[39m c[33m.[39mdocumentId [33m||[39m c[33m.[39mid[33m,[39m name[33m:[39m attrs[33m.[39mname }[33m;[39m
+ [90m    |[39m                                                      [31m[1m^[22m[39m
+ [90m 56 |[39m     })[33m;[39m
+ [90m 57 |[39m
+ [90m 58 |[39m     [36mreturn[39m [33mNextResponse[39m[33m.[39mjson({[0m
+Next.js build worker exited with code: 1 and signal: null
+ ELIFECYCLE  Command failed with exit code 1.
