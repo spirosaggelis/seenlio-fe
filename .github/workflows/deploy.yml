@@ -34,7 +34,8 @@ jobs:
             # Symlink env file
             ln -sf /home/glow/seenlio/.env.fe "$APP_DIR/.env"
 
-            # Pull latest
+            # Reset any local changes (e.g. package-lock.json from npm install)
+            git checkout -- .
             git pull origin main
 
             # Install and build
