@@ -25,13 +25,14 @@ interface Target {
 interface Run {
   id: string;
   jobId: string;
-  status: string;
+  jobStatus: string;
   startedAt: string;
   completedAt: string;
   duration: number;
   result: {
     discovered?: number;
     approved?: number;
+    rejected?: number;
     videos_generated?: number;
     published?: number;
     errors?: number;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 
 interface StickyCtaBarProps {
   buttons: Array<{
@@ -33,8 +34,6 @@ export default function StickyCtaBar({ buttons, productCode, price, productName,
 
   if (buttons.length === 0) return null;
 
-  const primary = buttons[0];
-
   return (
     <div
       className={`fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -46,9 +45,11 @@ export default function StickyCtaBar({ buttons, productCode, price, productName,
           {/* Product info */}
           <div className="hidden sm:flex items-center gap-3 min-w-0 flex-1">
             {imageUrl && (
-              <img
+              <Image
                 src={imageUrl}
                 alt={productName}
+                width={40}
+                height={40}
                 className="w-10 h-10 rounded-lg object-cover border border-white/10 shrink-0"
               />
             )}

@@ -35,7 +35,8 @@ interface PageProps {
 export default async function OverviewPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const to = params.to ?? new Date().toISOString().split('T')[0];
-  const from = params.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().split('T')[0];
+  const now = new Date();
+  const from = params.from ?? new Date(now.getTime() - 30 * 86_400_000).toISOString().split('T')[0];
 
   const data = await fetchOverview(from, to);
 

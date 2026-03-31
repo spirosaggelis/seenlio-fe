@@ -43,12 +43,12 @@ export async function GET(): Promise<NextResponse> {
     ]);
 
     const channels = (channelsRes.data || []).map((c: Record<string, unknown>) => {
-      const attrs = (c as Record<string, unknown>).attributes || c;
+      const attrs = ((c as Record<string, unknown>).attributes || c) as Record<string, unknown>;
       const cat = attrs.category as Record<string, unknown> | undefined;
       const catData = cat?.data ? cat.data : cat;
 
       const accounts = (attrs.platformAccounts as unknown[]) || [];
-      const platformAccounts = (Array.isArray(accounts) ? accounts : (accounts as Record<string, unknown>).data || []).map(
+      const platformAccounts = ((Array.isArray(accounts) ? accounts : (accounts as Record<string, unknown>).data || []) as unknown[]).map(
         (a: unknown) => {
           const acc = a as Record<string, unknown>;
           const accAttrs = (acc.attributes || acc) as Record<string, unknown>;
@@ -79,7 +79,7 @@ export async function GET(): Promise<NextResponse> {
     });
 
     const categories = (categoriesRes.data || []).map((c: Record<string, unknown>) => {
-      const attrs = (c as Record<string, unknown>).attributes || c;
+      const attrs = ((c as Record<string, unknown>).attributes || c) as Record<string, unknown>;
       return { id: c.documentId || c.id, name: attrs.name };
     });
 

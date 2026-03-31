@@ -14,7 +14,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   tiktok_shop: 'TikTok Shop',
 };
 
-export default function ReviewsSection({ rating, reviewCount, productName, sourcePlatform }: ReviewsSectionProps) {
+export default function ReviewsSection({ rating, reviewCount, sourcePlatform }: ReviewsSectionProps) {
   if (!rating || rating <= 0 || !reviewCount || reviewCount <= 0) return null;
 
   const platform = sourcePlatform ? PLATFORM_LABELS[sourcePlatform.toLowerCase()] ?? sourcePlatform : null;

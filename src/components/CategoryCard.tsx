@@ -52,7 +52,6 @@ const colorMap: Record<string, { from: string; to: string; border: string; glow:
 export default function CategoryCard({
   name,
   slug,
-  icon,
   productCount,
   color = "purple",
   description,

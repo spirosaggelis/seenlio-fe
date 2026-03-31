@@ -15,7 +15,8 @@ function isoDate(d: Date) {
 
 export function getDateRange(searchParams: URLSearchParams): { from: string; to: string } {
   const to = searchParams.get('to') ?? isoDate(new Date());
-  const from = searchParams.get('from') ?? isoDate(new Date(Date.now() - 30 * 86400_000));
+  const now = new Date();
+  const from = searchParams.get('from') ?? isoDate(new Date(now.getTime() - 30 * 86400_000));
   return { from, to };
 }
 
@@ -29,16 +30,17 @@ export default function DateRangePicker() {
 
   function applyPreset(days: number) {
     const params = new URLSearchParams(searchParams.toString());
-    const to = new Date();
-    const from = days === 0 ? new Date() : new Date(Date.now() - days * 86400_000);
+    const now = new Date();
+    const from = days === 0 ? now : new Date(now.getTime() - days * 86400_000);
     params.set('from', isoDate(from));
-    params.set('to', isoDate(to));
+    params.set('to', isoDate(now));
     router.push(`${pathname}?${params.toString()}`);
   }
 
   function isActive(days: number) {
     if (!currentFrom || !currentTo) return days === 30;
-    const expectedFrom = isoDate(days === 0 ? new Date() : new Date(Date.now() - days * 86400_000));
+    const now = new Date();
+    const expectedFrom = isoDate(days === 0 ? now : new Date(now.getTime() - days * 86400_000));
     return currentFrom === expectedFrom;
   }
 

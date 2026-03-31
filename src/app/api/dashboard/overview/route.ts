@@ -18,7 +18,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const prevFrom = new Date(prevTo);
   prevFrom.setDate(prevFrom.getDate() - rangeDays);
 
-  const [prevPageViews, prevAllEvents] = await Promise.all([
+  const [prevPageViews] = await Promise.all([
     fetchEvents({
       event_type: 'page_view',
       from: prevFrom.toISOString().split('T')[0],

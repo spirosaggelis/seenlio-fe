@@ -51,7 +51,7 @@ export async function GET(): Promise<NextResponse> {
     const settingAttrs = settingData.attributes || settingData;
 
     const categories = (categoriesRes.data || []).map((c: Record<string, unknown>) => {
-      const attrs = (c as Record<string, unknown>).attributes || c;
+      const attrs = ((c as Record<string, unknown>).attributes || c) as Record<string, unknown>;
       return { id: c.documentId || c.id, name: attrs.name };
     });
 

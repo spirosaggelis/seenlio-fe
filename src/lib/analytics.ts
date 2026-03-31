@@ -27,7 +27,7 @@ interface SiteEventPayload {
 
 // ─── Event buffer ─────────────────────────────────────────────────────────────
 
-let buffer: SiteEventPayload[] = [];
+const buffer: SiteEventPayload[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 function flush(): void {

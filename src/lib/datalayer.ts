@@ -57,9 +57,9 @@ export function pushToDataLayer(event: DataLayerEvent): void {
 export function updateGtagConsent(prefs: ConsentPreferences): void {
   if (typeof window === 'undefined') return;
   window.dataLayer = window.dataLayer || [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function gtag(...args: any[]) {
-    window.dataLayer.push(arguments as unknown as Record<string, unknown>);
+   
+  function gtag(...args: unknown[]) {
+    window.dataLayer.push(args as unknown as Record<string, unknown>);
   }
   gtag('consent', 'update', consentToStorageState(prefs));
 }

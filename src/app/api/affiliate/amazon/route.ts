@@ -82,7 +82,7 @@ async function getAffiliateConfig(): Promise<{
         cachedRegionalTags =
           (amazonPattern.regionalTags as Record<string, string>) || {};
         cacheChecked = Date.now();
-        return { defaultTag: cachedDefaultTag, regionalTags: cachedRegionalTags };
+        return { defaultTag: cachedDefaultTag || "", regionalTags: cachedRegionalTags };
       }
     }
   } catch {
