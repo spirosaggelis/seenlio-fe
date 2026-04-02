@@ -28,10 +28,10 @@ export async function GET(): Promise<NextResponse> {
           `/job-logs?filters[jobType][$eq]=pipeline&sort=startedAt:desc&pagination[pageSize]=10`,
         ),
         strapiGet(
-          `/videos?filters[createdAt][$gte]=${weekAgo}&filters[status][$in][0]=ready&filters[status][$in][1]=published&pagination[pageSize]=1&fields[0]=id`,
+          `/videos?filters[createdAt][$gte]=${weekAgo}&filters[videoStatus][$in][0]=ready&filters[videoStatus][$in][1]=published&pagination[pageSize]=1&fields[0]=id`,
         ),
         strapiGet(
-          `/publish-records?filters[publishedAt][$gte]=${weekAgo}&filters[status][$eq]=published&pagination[pageSize]=1&fields[0]=id`,
+          `/publish-records?filters[publishedAt][$gte]=${weekAgo}&filters[publishStatus][$eq]=published&pagination[pageSize]=1&fields[0]=id`,
         ),
         strapiGet('/setting'),
         strapiGet('/categories?fields[0]=id&fields[1]=name&filters[isActive][$eq]=true&sort=name:asc&pagination[pageSize]=100'),

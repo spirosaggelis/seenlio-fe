@@ -15,7 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     // Fetch products
     const productsRes = await fetch(
-      `${strapiUrl}/api/products?fields[0]=slug&fields[1]=updatedAt&pagination[pageSize]=1000&filters[status][$eq]=published`,
+      `${strapiUrl}/api/products?fields[0]=slug&fields[1]=updatedAt&pagination[pageSize]=1000&filters[productStatus][$eq]=published`,
       { next: { revalidate: 3600 } }
     );
     if (productsRes.ok) {
