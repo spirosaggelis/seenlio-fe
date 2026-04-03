@@ -57,7 +57,10 @@ function isTokenExpired(account: PlatformAccount): boolean {
 export default function ChannelsClient({ initialChannels, categories }: Props) {
   const [channels, setChannels] = useState(initialChannels);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [toast, setToast] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
   // Channel form
   const [showChannelForm, setShowChannelForm] = useState(false);
@@ -72,7 +75,9 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
   const [formAccountName, setFormAccountName] = useState('');
 
   // Expanded channels
-  const [expanded, setExpanded] = useState<Set<string>>(new Set(initialChannels.map((c) => c.id)));
+  const [expanded, setExpanded] = useState<Set<string>>(
+    new Set(initialChannels.map((c) => c.id)),
+  );
 
   const searchParams = useSearchParams();
 
@@ -147,7 +152,10 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
       }
       await refreshChannels();
       setShowChannelForm(false);
-      setToast({ type: 'success', message: editChannelId ? 'Channel updated' : 'Channel created' });
+      setToast({
+        type: 'success',
+        message: editChannelId ? 'Channel updated' : 'Channel created',
+      });
     } catch {
       setToast({ type: 'error', message: 'Failed to save channel' });
     } finally {
@@ -202,7 +210,9 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
     if (!confirm('Delete this platform account?')) return;
     setSaving(true);
     try {
-      await fetch(`/api/dashboard/channels/accounts?id=${accountId}`, { method: 'DELETE' });
+      await fetch(`/api/dashboard/channels/accounts?id=${accountId}`, {
+        method: 'DELETE',
+      });
       await refreshChannels();
       setToast({ type: 'success', message: 'Account deleted' });
     } catch {
@@ -229,7 +239,9 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
   // ── OAuth Connect ──
 
   function connectAccount(account: PlatformAccount) {
-    const currentUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    // const currentUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const currentUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
 
     if (account.platform === 'tiktok') {
       const clientKey = prompt('Enter your TikTok Client Key:');
@@ -284,7 +296,10 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
           body: JSON.stringify({ id: account.id, credentials }),
         }).then(() => {
           refreshChannels();
-          setToast({ type: 'success', message: `${account.platform} credentials saved` });
+          setToast({
+            type: 'success',
+            message: `${account.platform} credentials saved`,
+          });
         });
       } catch {
         setToast({ type: 'error', message: 'Invalid JSON' });
@@ -335,7 +350,9 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
           </h3>
           <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
             <div>
-              <label className='text-xs text-[var(--fg-muted)] block mb-1'>Name</label>
+              <label className='text-xs text-[var(--fg-muted)] block mb-1'>
+                Name
+              </label>
               <input
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
@@ -344,7 +361,9 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
               />
             </div>
             <div>
-              <label className='text-xs text-[var(--fg-muted)] block mb-1'>Category</label>
+              <label className='text-xs text-[var(--fg-muted)] block mb-1'>
+                Category
+              </label>
               <select
                 value={formCategory}
                 onChange={(e) => setFormCategory(e.target.value)}
@@ -359,7 +378,9 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
               </select>
             </div>
             <div>
-              <label className='text-xs text-[var(--fg-muted)] block mb-1'>Description</label>
+              <label className='text-xs text-[var(--fg-muted)] block mb-1'>
+                Description
+              </label>
               <input
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
@@ -389,7 +410,9 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
       {/* Channel list */}
       {channels.length === 0 && !showChannelForm && (
         <div className='bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-12 text-center'>
-          <p className='text-[var(--fg-muted)]'>No channels yet. Create one to get started.</p>
+          <p className='text-[var(--fg-muted)]'>
+            No channels yet. Create one to get started.
+          </p>
         </div>
       )}
 
@@ -411,10 +434,16 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                 strokeWidth={2}
                 stroke='currentColor'
               >
-                <path strokeLinecap='round' strokeLinejoin='round' d='M8.25 4.5l7.5 7.5-7.5 7.5' />
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  d='M8.25 4.5l7.5 7.5-7.5 7.5'
+                />
               </svg>
               <div>
-                <h3 className='text-sm font-semibold text-[var(--fg-primary)]'>{channel.name}</h3>
+                <h3 className='text-sm font-semibold text-[var(--fg-primary)]'>
+                  {channel.name}
+                </h3>
                 <div className='flex items-center gap-2 mt-0.5'>
                   {channel.category && (
                     <span className='text-xs text-[var(--accent-purple-light)] bg-[var(--accent-purple)] bg-opacity-20 px-2 py-0.5 rounded'>
@@ -422,12 +451,16 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                     </span>
                   )}
                   <span className='text-xs text-[var(--fg-muted)]'>
-                    {channel.platformAccounts.length} account{channel.platformAccounts.length !== 1 ? 's' : ''}
+                    {channel.platformAccounts.length} account
+                    {channel.platformAccounts.length !== 1 ? 's' : ''}
                   </span>
                 </div>
               </div>
             </div>
-            <div className='flex items-center gap-2' onClick={(e) => e.stopPropagation()}>
+            <div
+              className='flex items-center gap-2'
+              onClick={(e) => e.stopPropagation()}
+            >
               {/* Platform badges summary */}
               <div className='flex gap-1'>
                 {channel.platformAccounts.map((acc) => (
@@ -480,15 +513,25 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                         {PLATFORM_ICONS[account.platform] || '?'}
                       </span>
                       <div>
-                        <p className='text-sm font-medium text-[var(--fg-primary)]'>{account.accountName}</p>
+                        <p className='text-sm font-medium text-[var(--fg-primary)]'>
+                          {account.accountName}
+                        </p>
                         <div className='flex items-center gap-2 mt-0.5'>
-                          <span className={`text-xs ${connected ? (expired ? 'text-orange-400' : 'text-green-400') : 'text-red-400'}`}>
-                            {connected ? (expired ? 'Token expired' : 'Connected') : 'Not connected'}
+                          <span
+                            className={`text-xs ${connected ? (expired ? 'text-orange-400' : 'text-green-400') : 'text-red-400'}`}
+                          >
+                            {connected
+                              ? expired
+                                ? 'Token expired'
+                                : 'Connected'
+                              : 'Not connected'}
                           </span>
                           {account.lastPostedAt && (
                             <span className='text-xs text-[var(--fg-muted)]'>
                               Last post:{' '}
-                              {new Date(account.lastPostedAt).toLocaleDateString('en-US', {
+                              {new Date(
+                                account.lastPostedAt,
+                              ).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
                               })}
@@ -509,7 +552,11 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                             : 'bg-[var(--accent-purple)] text-white hover:opacity-90',
                         ].join(' ')}
                       >
-                        {connected ? (expired ? 'Reconnect' : 'Reconnect') : 'Connect'}
+                        {connected
+                          ? expired
+                            ? 'Reconnect'
+                            : 'Reconnect'
+                          : 'Connect'}
                       </button>
 
                       {/* Active toggle */}
@@ -517,14 +564,18 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                         onClick={() => toggleAccount(account)}
                         className={[
                           'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-                          account.isActive ? 'bg-[var(--accent-purple)]' : 'bg-[var(--bg-tertiary)]',
+                          account.isActive
+                            ? 'bg-[var(--accent-purple)]'
+                            : 'bg-[var(--bg-tertiary)]',
                         ].join(' ')}
                         title={account.isActive ? 'Active' : 'Disabled'}
                       >
                         <span
                           className={[
                             'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
-                            account.isActive ? 'translate-x-4' : 'translate-x-0.5',
+                            account.isActive
+                              ? 'translate-x-4'
+                              : 'translate-x-0.5',
                           ].join(' ')}
                         />
                       </button>
@@ -546,7 +597,9 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                 <div className='px-5 py-4 bg-[var(--bg-tertiary)] border-t border-[var(--border-subtle)]'>
                   <div className='flex items-end gap-3'>
                     <div>
-                      <label className='text-xs text-[var(--fg-muted)] block mb-1'>Platform</label>
+                      <label className='text-xs text-[var(--fg-muted)] block mb-1'>
+                        Platform
+                      </label>
                       <select
                         value={formPlatform}
                         onChange={(e) => setFormPlatform(e.target.value)}
@@ -560,7 +613,9 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                       </select>
                     </div>
                     <div className='flex-1'>
-                      <label className='text-xs text-[var(--fg-muted)] block mb-1'>Account Name</label>
+                      <label className='text-xs text-[var(--fg-muted)] block mb-1'>
+                        Account Name
+                      </label>
                       <input
                         value={formAccountName}
                         onChange={(e) => setFormAccountName(e.target.value)}
