@@ -17,6 +17,8 @@ const PINTEREST_APP_ID = process.env.PINTEREST_APP_ID || '';
 const PINTEREST_APP_SECRET = process.env.PINTEREST_APP_SECRET || '';
 
 function getRedirectUri(req: NextRequest) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (siteUrl) return `${siteUrl}/api/auth/pinterest/callback`;
   const proto = req.headers.get('x-forwarded-proto') || 'http';
   const host = req.headers.get('host') || 'localhost:3000';
   return `${proto}://${host}/api/auth/pinterest/callback`;
@@ -28,7 +30,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const state = searchParams.get('state'); // platform account documentId
   const error = searchParams.get('error');
 
-  const dashboardUrl = new URL('/dashboard/channels', req.url);
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || req.url;
+  const dashboardUrl = new URL('/dashboard/channels', baseUrl);
 
   if (error) {
     dashboardUrl.searchParams.set('error', `Pinterest auth failed: ${error}`);
