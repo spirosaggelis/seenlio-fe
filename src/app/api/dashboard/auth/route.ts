@@ -26,12 +26,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const res = NextResponse.json({ ok: true });
     res.cookies.set('dashboard_token', token, {
       httpOnly: true,
-      // Lax: required so the session survives OAuth redirects (e.g. Pinterest → /api/.../callback → /dashboard).
-      // Strict cookies are often omitted on the return navigation from the provider, so users land on login.
+      // Lax: session must survive top-level return from OAuth providers (e.g. Pinterest).
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24, // 24 hours
-      path: '/dashboard',
+      path: '/',
     });
     return res;
   } catch {
@@ -43,7 +42,7 @@ export async function DELETE(): Promise<NextResponse> {
   const res = NextResponse.json({ ok: true });
   res.cookies.set('dashboard_token', '', {
     maxAge: 0,
-    path: '/dashboard',
+    path: '/',
   });
   return res;
 }

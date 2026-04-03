@@ -3,6 +3,11 @@ import { jwtVerify } from 'jose';
 
 const DASHBOARD_JWT_SECRET = process.env.DASHBOARD_JWT_SECRET ?? 'change-me-in-production';
 
+/** Set DASHBOARD_AUTH_DISABLED=true only for local/debug — never in production. */
+const DASHBOARD_AUTH_DISABLED =
+  process.env.DASHBOARD_AUTH_DISABLED === 'true' ||
+  process.env.DASHBOARD_AUTH_DISABLED === '1';
+
 // ─── Dashboard auth guard ─────────────────────────────────────────────────────
 
 async function isDashboardAuthed(req: NextRequest): Promise<boolean> {
@@ -23,6 +28,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
   // ── Dashboard auth guard ──────────────────────────────────────────────────
   if (pathname.startsWith('/dashboard') && pathname !== '/dashboard/login') {
+    if (DASHBOARD_AUTH_DISABLED) {
+      return NextResponse.next();
+    }
     const authed = await isDashboardAuthed(req);
     if (!authed) {
       const base = process.env.NEXT_PUBLIC_SITE_URL || req.url;
