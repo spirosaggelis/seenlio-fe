@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { getProducts } from '@/lib/strapi';
 
 export const metadata: Metadata = {
   title: 'About Us',
@@ -56,16 +57,47 @@ const VALUES = [
   },
 ];
 
-const STATS = [
-  { value: '1K+', label: 'Products tracked', color: 'text-purple-400' },
-  { value: '50M+', label: 'Views analysed', color: 'text-cyan-400' },
-  { value: '4', label: 'Platforms monitored', color: 'text-pink-400' },
-  { value: '24/7', label: 'Real-time pipeline', color: 'text-amber-400' },
-];
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M+`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, '')}K+`;
+  return String(n);
+}
+
+async function fetchStats() {
+  try {
+    const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+    const token = process.env.STRAPI_API_TOKEN;
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    const [productData, viewData] = await Promise.all([
+      getProducts({ fields: ['id'], pagination: { pageSize: 1 } }),
+      fetch(`${STRAPI_URL}/api/site-events?filters[event_type][$eq]=page_view&pagination[pageSize]=1&fields[0]=id`, {
+        headers,
+        next: { revalidate: 300 },
+      }).then(r => r.ok ? r.json() : { meta: { pagination: { total: 0 } } }),
+    ]);
+
+    return {
+      products: productData.meta?.pagination?.total ?? 0,
+      views: viewData?.meta?.pagination?.total ?? 0,
+    };
+  } catch {
+    return { products: 0, views: 0 };
+  }
+}
 
 /* ─── Page ─────────────────────────────────────────────────────────────────── */
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const stats = await fetchStats();
+
+  const STATS = [
+    { value: stats.products > 0 ? formatCount(stats.products) : '0', label: 'Products tracked', color: 'text-purple-400' },
+    { value: stats.views > 0 ? formatCount(stats.views) : '0', label: 'Views analysed', color: 'text-cyan-400' },
+    { value: '4', label: 'Platforms monitored', color: 'text-pink-400' },
+    { value: '24/7', label: 'Real-time pipeline', color: 'text-amber-400' },
+  ];
+
   return (
     <div className='min-h-screen'>
       {/* ─── Hero ───────────────────────────────────────────────────────── */}

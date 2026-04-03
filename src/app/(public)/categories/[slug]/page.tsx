@@ -1,10 +1,12 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getCategory, getProducts } from "@/lib/strapi";
 import ProductCard from "@/components/ProductCard";
 import ProductGrid from "@/components/ProductGrid";
 import CategoryBrowseTracker from "@/components/CategoryBrowseTracker";
+import CategoryIcon from "@/components/CategoryIcon";
 
 interface MediaItem {
   url: string;
@@ -34,6 +36,7 @@ interface CategoryData {
   description?: string;
   icon?: string;
   color?: string;
+  iconImage?: { url: string } | null;
   seo?: {
     metaTitle?: string;
     metaDescription?: string;
@@ -111,11 +114,13 @@ export default async function CategoryPage({ params }: PageProps) {
 
           <div className="flex items-center gap-5">
             {/* Category icon */}
-            {category.icon && (
-              <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${accent.from} ${accent.to} bg-opacity-20 flex items-center justify-center text-3xl border ${accent.border} shadow-lg ${accent.glow}`}>
-                {category.icon}
-              </div>
-            )}
+            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${accent.from} ${accent.to} bg-opacity-20 flex items-center justify-center border ${accent.border} shadow-lg ${accent.glow} overflow-hidden`}>
+              {category.iconImage?.url ? (
+                <Image src={category.iconImage.url} alt={category.name} width={64} height={64} className="w-full h-full object-cover" />
+              ) : (
+                <CategoryIcon slug={category.slug} className="w-10 h-10" />
+              )}
+            </div>
 
             <div>
               <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight">

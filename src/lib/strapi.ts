@@ -142,7 +142,7 @@ export async function getSettings() {
 
 export async function getCategories(options: FetchOptions = {}) {
   return fetchStrapi<unknown[]>('/categories', {
-    populate: ['seo'],
+    populate: ['seo', 'iconImage'],
     filters: { isActive: { $eq: true } },
     sort: 'sortOrder:asc',
     ...options,
@@ -152,7 +152,7 @@ export async function getCategories(options: FetchOptions = {}) {
 export async function getCategory(slug: string) {
   const res = await fetchStrapi<unknown[]>('/categories', {
     filters: { slug: { $eq: slug } },
-    populate: ['seo'],
+    populate: ['seo', 'iconImage'],
   });
 
   return res.data?.[0] || null;

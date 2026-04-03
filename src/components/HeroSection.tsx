@@ -1,6 +1,17 @@
 import Link from "next/link";
 
-export default function HeroSection() {
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M+`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, '')}K+`;
+  return String(n);
+}
+
+interface HeroSectionProps {
+  productCount?: number;
+  pageViews?: number;
+}
+
+export default function HeroSection({ productCount = 0, pageViews = 0 }: HeroSectionProps) {
   return (
     <section className="relative overflow-hidden py-24 sm:py-36">
       {/* Animated gradient mesh background */}
@@ -93,8 +104,8 @@ export default function HeroSection() {
         {/* Stats row */}
         <div className="mt-20 grid grid-cols-3 gap-8 max-w-lg mx-auto animate-fade-in-up [animation-delay:600ms]">
           {[
-            { value: "1K+", label: "Products" },
-            { value: "50M+", label: "Views tracked" },
+            { value: productCount > 0 ? formatCount(productCount) : "0", label: "Products" },
+            { value: pageViews > 0 ? formatCount(pageViews) : "0", label: "Views tracked" },
             { value: "24/7", label: "Live updates" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">

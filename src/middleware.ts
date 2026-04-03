@@ -38,9 +38,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     pathname.startsWith('/api/') ||
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/favicon') ||
+    pathname.startsWith('/dashboard') ||
     pathname === '/robots.txt' ||
-    pathname === '/sitemap.xml' ||
-    pathname === '/dashboard/login'
+    pathname === '/sitemap.xml'
   ) {
     return NextResponse.next();
   }

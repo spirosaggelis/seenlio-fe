@@ -11,6 +11,7 @@ interface Category {
   icon?: string;
   color?: string;
   description?: string;
+  iconImage?: { url: string } | null;
 }
 
 interface MediaItem {
@@ -44,9 +45,11 @@ export default async function HomePage() {
   let trending: Product[] = [];
   let categories: Category[] = [];
   let recent: Product[] = [];
+  let productCount = 0;
+  let pageViews = 0;
 
   try {
-    const [trendingData, categoryData, recentData] = await Promise.all([
+    const [trendingData, categoryData, recentData, productCountData, pageViewData] = await Promise.all([
       getTrendingProducts(),
       getCategories({ pagination: { pageSize: 10 } }),
       getProducts({
@@ -54,10 +57,28 @@ export default async function HomePage() {
         sort: ["createdAt:desc"],
         pagination: { pageSize: 8 },
       }),
+      getProducts({
+        fields: ["id"],
+        pagination: { pageSize: 1 },
+      }),
+      getProducts({
+        fields: ["id"],
+        pagination: { pageSize: 1 },
+      }).then(() =>
+        // Fetch page view count from site-events
+        fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'}/api/site-events?filters[event_type][$eq]=page_view&pagination[pageSize]=1&fields[0]=id`, {
+          headers: {
+            ...(process.env.STRAPI_API_TOKEN ? { Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}` } : {}),
+          },
+          next: { revalidate: 300 },
+        }).then(r => r.ok ? r.json() : { meta: { pagination: { total: 0 } } })
+      ),
     ]);
     trending = (trendingData || []) as Product[];
     categories = (categoryData.data || []) as Category[];
     recent = (recentData.data || []) as Product[];
+    productCount = productCountData.meta?.pagination?.total ?? 0;
+    pageViews = pageViewData?.meta?.pagination?.total ?? 0;
   } catch {
     // Strapi may not be running yet
   }
@@ -65,7 +86,7 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
       {/* Hero */}
-      <HeroSection />
+      <HeroSection productCount={productCount} pageViews={pageViews} />
 
       <div className="mx-auto max-w-7xl px-4 pb-24 space-y-20">
         {/* Trending Now */}
@@ -134,6 +155,7 @@ export default async function HomePage() {
                     name={cat.name}
                     slug={cat.slug}
                     icon={cat.icon}
+                    iconImageUrl={cat.iconImage?.url}
                     color={cat.color}
                     description={cat.description}
                   />

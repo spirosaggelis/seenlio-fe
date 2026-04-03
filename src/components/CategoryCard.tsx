@@ -1,10 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import CategoryIcon from "./CategoryIcon";
 
 interface CategoryCardProps {
   name: string;
   slug: string;
   icon?: string;
+  iconImageUrl?: string;
   productCount?: number;
   color?: string;
   description?: string;
@@ -52,6 +54,7 @@ const colorMap: Record<string, { from: string; to: string; border: string; glow:
 export default function CategoryCard({
   name,
   slug,
+  iconImageUrl,
   productCount,
   color = "purple",
   description,
@@ -73,7 +76,11 @@ export default function CategoryCard({
 
       {/* Icon */}
       <div className="relative mb-3 transition-transform duration-300 group-hover:scale-110 drop-shadow-lg">
-        <CategoryIcon slug={slug} className="w-12 h-12" />
+        {iconImageUrl ? (
+          <Image src={iconImageUrl} alt={name} width={48} height={48} className="w-12 h-12 rounded-lg object-cover" />
+        ) : (
+          <CategoryIcon slug={slug} className="w-12 h-12" />
+        )}
       </div>
 
       {/* Name */}
