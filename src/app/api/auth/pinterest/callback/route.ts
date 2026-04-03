@@ -16,12 +16,25 @@ const API_TOKEN = process.env.STRAPI_API_TOKEN || '';
 const PINTEREST_APP_ID = process.env.PINTEREST_APP_ID || '';
 const PINTEREST_APP_SECRET = process.env.PINTEREST_APP_SECRET || '';
 
+/**
+ * Public origin for OAuth redirect_uri and redirects — do not use `new URL(req.url).origin`
+ * when the app is behind a reverse proxy (req.url is often http://localhost:5000/...).
+ */
+function getPublicOrigin(req: NextRequest): string {
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '');
+  if (fromEnv) return fromEnv;
+
+  const proto =
+    req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'http';
+  const host =
+    req.headers.get('x-forwarded-host')?.split(',')[0]?.trim() ||
+    req.headers.get('host') ||
+    'localhost:3000';
+  return `${proto}://${host}`;
+}
+
 function getRedirectUri(req: NextRequest) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (siteUrl) return `${siteUrl}/api/auth/pinterest/callback`;
-  const proto = req.headers.get('x-forwarded-proto') || 'http';
-  const host = req.headers.get('host') || 'localhost:3000';
-  return `${proto}://${host}/api/auth/pinterest/callback`;
+  return `${getPublicOrigin(req)}/api/auth/pinterest/callback`;
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -30,8 +43,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const state = searchParams.get('state'); // platform account documentId
   const error = searchParams.get('error');
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || req.url;
-  const dashboardUrl = new URL('/dashboard/channels', baseUrl);
+  const dashboardUrl = new URL('/dashboard/channels', getPublicOrigin(req));
 
   if (error) {
     dashboardUrl.searchParams.set('error', `Pinterest auth failed: ${error}`);

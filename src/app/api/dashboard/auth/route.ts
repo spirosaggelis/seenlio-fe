@@ -26,7 +26,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const res = NextResponse.json({ ok: true });
     res.cookies.set('dashboard_token', token, {
       httpOnly: true,
-      sameSite: 'strict',
+      // Lax: required so the session survives OAuth redirects (e.g. Pinterest → /api/.../callback → /dashboard).
+      // Strict cookies are often omitted on the return navigation from the provider, so users land on login.
+      sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24, // 24 hours
       path: '/dashboard',

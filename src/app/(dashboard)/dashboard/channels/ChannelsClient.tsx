@@ -239,9 +239,9 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
   // ── OAuth Connect ──
 
   function connectAccount(account: PlatformAccount) {
-    // const currentUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    // Match the host the user is actually on (avoids www vs apex cookie mismatch vs hardcoded fallback).
     const currentUrl =
-      process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
+      process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
 
     if (account.platform === 'tiktok') {
       const clientKey = prompt('Enter your TikTok Client Key:');
