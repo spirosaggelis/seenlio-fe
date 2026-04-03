@@ -39,12 +39,12 @@ export async function GET(): Promise<NextResponse> {
 
     const targets = (targetsRes.data || []).map((t: Record<string, unknown>) => {
       const attrs = (t as Record<string, unknown>).attributes || t;
-      return { id: t.documentId || t.id, ...attrs };
+      return { ...attrs, id: t.documentId || (attrs as Record<string, unknown>).documentId || t.id };
     });
 
     const recentRuns = (jobLogsRes.data || []).map((j: Record<string, unknown>) => {
       const attrs = (j as Record<string, unknown>).attributes || j;
-      return { id: j.documentId || j.id, ...attrs };
+      return { ...attrs, id: j.documentId || (attrs as Record<string, unknown>).documentId || j.id };
     });
 
     const settingData = settingRes.data || {};

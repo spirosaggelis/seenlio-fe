@@ -34,7 +34,6 @@ interface CategoryData {
   name: string;
   slug: string;
   description?: string;
-  icon?: string;
   color?: string;
   iconImage?: { url: string } | null;
   seo?: {

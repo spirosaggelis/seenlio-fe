@@ -333,7 +333,7 @@ export default async function ProductPage({ params }: PageProps) {
                   href={`/categories/${cat.slug}`}
                   className="text-xs font-medium px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-300 border border-purple-500/20 hover:bg-purple-500/20 hover:border-purple-500/30 transition-colors"
                 >
-                  {cat.icon ? `${cat.icon} ` : ""}{cat.name}
+                  {cat.name}
                 </Link>
               ))}
             </div>

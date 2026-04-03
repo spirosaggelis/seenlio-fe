@@ -5,7 +5,6 @@ import CategoryIcon from "./CategoryIcon";
 interface CategoryCardProps {
   name: string;
   slug: string;
-  icon?: string;
   iconImageUrl?: string;
   productCount?: number;
   color?: string;

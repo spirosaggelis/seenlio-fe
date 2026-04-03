@@ -8,7 +8,6 @@ interface Category {
   id: number;
   name: string;
   slug: string;
-  icon?: string;
   color?: string;
   description?: string;
   iconImage?: { url: string } | null;
@@ -154,7 +153,6 @@ export default async function HomePage() {
                   <CategoryCard
                     name={cat.name}
                     slug={cat.slug}
-                    icon={cat.icon}
                     iconImageUrl={cat.iconImage?.url}
                     color={cat.color}
                     description={cat.description}
