@@ -259,13 +259,21 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
         `&prompt=consent` +
         `&state=${account.id}`;
       window.location.href = authUrl;
-    } else if (account.platform === 'instagram' || account.platform === 'pinterest') {
+    } else if (account.platform === 'pinterest') {
+      const redirectUri = `${currentUrl}/api/auth/pinterest/callback`;
+      const authUrl =
+        `https://www.pinterest.com/oauth/` +
+        `?client_id=${encodeURIComponent(process.env.NEXT_PUBLIC_PINTEREST_APP_ID || prompt('Enter your Pinterest App ID:') || '')}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=code` +
+        `&scope=boards:read,boards:write,pins:read,pins:write,user_accounts:read` +
+        `&state=${account.id}`;
+      window.location.href = authUrl;
+    } else if (account.platform === 'instagram') {
       // Manual credential entry for platforms without OAuth flow yet
       const json = prompt(
         `Paste credentials JSON for ${account.platform}:\n\n` +
-          (account.platform === 'instagram'
-            ? '{"access_token": "...", "ig_user_id": "..."}'
-            : '{"access_token": "...", "board_id": "..."}'),
+          '{"access_token": "...", "ig_user_id": "..."}',
       );
       if (!json) return;
       try {
