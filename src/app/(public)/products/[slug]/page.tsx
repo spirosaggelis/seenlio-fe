@@ -151,16 +151,44 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const product = (await getProduct(slug)) as ProductData | null;
   if (!product) return { title: "Product Not Found" };
 
-  const ogImage = product.media?.find((m) => m.isPrimary && m.type !== "video")?.url
-    || product.media?.find((m) => m.type !== "video")?.url;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com";
+  const productUrl = `${siteUrl}/products/${product.slug}`;
+
+  // Build SEO-safe title (max ~60 chars before suffix)
+  const rawTitle = product.seo?.metaTitle || product.name;
+  const suffix = " | Seenlio";
+  const maxTitleLen = 65 - suffix.length;
+  const title =
+    rawTitle.length > maxTitleLen
+      ? rawTitle.slice(0, maxTitleLen).trimEnd() + "…" + suffix
+      : rawTitle + suffix;
+
+  // Build SEO-safe description (max 155 chars)
+  const rawDesc =
+    product.seo?.metaDescription ||
+    product.shortDescription ||
+    product.description ||
+    product.name;
+  const description =
+    rawDesc.length > 155 ? rawDesc.slice(0, 152).trimEnd() + "…" : rawDesc;
+
+  const ogImage =
+    product.media?.find((m) => m.isPrimary && m.type !== "video")?.url ||
+    product.media?.find((m) => m.type !== "video")?.url;
 
   return {
-    title: product.seo?.metaTitle || product.name,
-    description:
-      product.seo?.metaDescription ||
-      product.shortDescription ||
-      product.description?.slice(0, 160),
-    openGraph: ogImage ? { images: [{ url: ogImage }] } : undefined,
+    title,
+    description,
+    alternates: {
+      canonical: productUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      url: productUrl,
+      type: "website",
+      ...(ogImage ? { images: [{ url: ogImage }] } : {}),
+    },
   };
 }
 

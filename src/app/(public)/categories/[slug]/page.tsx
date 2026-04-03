@@ -60,10 +60,36 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const category = (await getCategory(slug)) as CategoryData | null;
   if (!category) return { title: "Category Not Found" };
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com";
+  const categoryUrl = `${siteUrl}/categories/${category.slug}`;
+
+  const rawTitle = category.seo?.metaTitle || category.name;
+  const suffix = " | Seenlio";
+  const maxTitleLen = 65 - suffix.length;
+  const title =
+    rawTitle.length > maxTitleLen
+      ? rawTitle.slice(0, maxTitleLen).trimEnd() + "…" + suffix
+      : rawTitle + suffix;
+
+  const rawDesc =
+    category.seo?.metaDescription ||
+    category.description ||
+    `Browse trending ${category.name} products on Seenlio.`;
+  const description =
+    rawDesc.length > 155 ? rawDesc.slice(0, 152).trimEnd() + "…" : rawDesc;
+
   return {
-    title: category.seo?.metaTitle || category.name,
-    description:
-      category.seo?.metaDescription || category.description?.slice(0, 160),
+    title,
+    description,
+    alternates: {
+      canonical: categoryUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      url: categoryUrl,
+      type: "website",
+    },
   };
 }
 
