@@ -229,7 +229,7 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
   // ── OAuth Connect ──
 
   function connectAccount(account: PlatformAccount) {
-    const currentUrl = window.location.origin;
+    const currentUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
 
     if (account.platform === 'tiktok') {
       const clientKey = prompt('Enter your TikTok Client Key:');
