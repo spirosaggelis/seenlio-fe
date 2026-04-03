@@ -13,7 +13,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const STRAPI_URL = process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL || '';
 const API_TOKEN = process.env.STRAPI_API_TOKEN || '';
-const PINTEREST_APP_ID = process.env.PINTEREST_APP_ID || '';
+/** Server env; falls back to public ID so token exchange matches the authorize URL client_id. */
+const PINTEREST_APP_ID =
+  process.env.PINTEREST_APP_ID || process.env.NEXT_PUBLIC_PINTEREST_APP_ID || '';
 const PINTEREST_APP_SECRET = process.env.PINTEREST_APP_SECRET || '';
 
 /**
@@ -56,7 +58,16 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    // Exchange code for tokens — Pinterest uses Basic auth (base64 of app_id:app_secret)
+    if (!PINTEREST_APP_ID || !PINTEREST_APP_SECRET) {
+      dashboardUrl.searchParams.set(
+        'error',
+        'Pinterest OAuth is not configured: set PINTEREST_APP_ID and PINTEREST_APP_SECRET (server env).',
+      );
+      return NextResponse.redirect(dashboardUrl);
+    }
+
+    // Pinterest expects Basic auth; many integrations also require client_id + client_secret in the body
+    // or the API returns code 2 "Authentication failed." (see Pinterest API / community threads).
     const basicAuth = Buffer.from(`${PINTEREST_APP_ID}:${PINTEREST_APP_SECRET}`).toString('base64');
 
     const tokenRes = await fetch('https://api.pinterest.com/v5/oauth/token', {
@@ -69,13 +80,21 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         grant_type: 'authorization_code',
         code,
         redirect_uri: getRedirectUri(req),
+        client_id: PINTEREST_APP_ID,
+        client_secret: PINTEREST_APP_SECRET,
       }),
     });
 
     const tokenData = await tokenRes.json();
 
-    if (tokenData.error || !tokenData.access_token) {
-      const errMsg = tokenData.message || tokenData.error || 'Token exchange failed';
+    if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
+      const errMsg =
+        tokenData.message || tokenData.error || tokenRes.statusText || 'Token exchange failed';
+      console.error('Pinterest token exchange failed:', {
+        status: tokenRes.status,
+        body: tokenData,
+        redirect_uri: getRedirectUri(req),
+      });
       dashboardUrl.searchParams.set('error', errMsg);
       return NextResponse.redirect(dashboardUrl);
     }
