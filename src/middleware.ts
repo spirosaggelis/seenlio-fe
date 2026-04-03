@@ -25,7 +25,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   if (pathname.startsWith('/dashboard') && pathname !== '/dashboard/login') {
     const authed = await isDashboardAuthed(req);
     if (!authed) {
-      const loginUrl = new URL('/dashboard/login', req.url);
+      const base = process.env.NEXT_PUBLIC_SITE_URL || req.url;
+      const loginUrl = new URL('/dashboard/login', base);
       loginUrl.searchParams.set('from', pathname);
       return NextResponse.redirect(loginUrl);
     }
