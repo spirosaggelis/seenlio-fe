@@ -24,10 +24,15 @@ export async function GET(request: Request, context: { params: { id: string } | 
     let page = 1;
     let hasMore = true;
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (process.env.STRAPI_API_TOKEN) {
+      headers['Authorization'] = `Bearer ${process.env.STRAPI_API_TOKEN}`;
+    }
+
     while (hasMore) {
       const productsRes = await fetch(
         `${STRAPI_URL}/api/products?fields[0]=slug&fields[1]=updatedAt&pagination[pageSize]=100&pagination[page]=${page}&filters[productStatus][$eq]=published&filters[createdAt][$gte]=${startDate}&filters[createdAt][$lte]=${endDate}`,
-        { next: { revalidate: 3600 } }
+        { headers, next: { revalidate: 3600 } }
       );
       
       if (!productsRes.ok) break;

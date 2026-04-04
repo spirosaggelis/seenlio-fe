@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://viralproducts.com";
 const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || "http://localhost:1337";
+const STRAPI_API_TOKEN = process.env.STRAPI_API_TOKEN;
 
 export async function GET() {
   const months = new Set<string>();
@@ -10,10 +11,15 @@ export async function GET() {
     let page = 1;
     let hasMore = true;
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (STRAPI_API_TOKEN) {
+      headers['Authorization'] = `Bearer ${STRAPI_API_TOKEN}`;
+    }
+
     while (hasMore) {
       const res = await fetch(
         `${STRAPI_URL}/api/products?fields[0]=createdAt&pagination[pageSize]=100&pagination[page]=${page}&filters[productStatus][$eq]=published`,
-        { next: { revalidate: 3600 } }
+        { headers, next: { revalidate: 3600 } }
       );
       
       if (!res.ok) break;
