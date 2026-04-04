@@ -250,13 +250,15 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
       if (!clientKey) return;
 
       const redirectUri = `${currentUrl}/api/auth/tiktok/callback`;
+      // Must match scopes enabled for the app in TikTok Developer Portal (Login Kit / Scopes).
+      const scope = 'user.info.basic,video.publish,video.upload';
       const authUrl =
         `https://www.tiktok.com/v2/auth/authorize/` +
         `?client_key=${encodeURIComponent(clientKey)}` +
-        `&scope=video.publish,video.upload` +
         `&response_type=code` +
+        `&scope=${encodeURIComponent(scope)}` +
         `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&state=${account.id}`;
+        `&state=${encodeURIComponent(account.id)}`;
       window.location.href = authUrl;
     } else if (account.platform === 'youtube') {
       const clientId =

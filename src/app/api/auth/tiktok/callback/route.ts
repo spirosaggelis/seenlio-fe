@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * TikTok OAuth callback handler.
  *
  * Flow:
- * 1. User clicks "Connect TikTok" → opens TikTok auth URL
+ * 1. User clicks "Connect TikTok" → opens TikTok auth URL (scopes in query from client)
  * 2. TikTok redirects here with ?code=XXX&state=ACCOUNT_ID
  * 3. We exchange the code for access_token + refresh_token
  * 4. Save credentials to the platform account in Strapi
@@ -42,7 +42,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    // Exchange code for tokens
     const tokenRes = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -71,11 +70,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       open_id: tokenData.open_id || '',
     };
 
-    // Calculate token expiry
     const expiresIn = tokenData.expires_in || 86400;
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
 
-    // Save to Strapi platform account if state has account ID
     if (state) {
       await fetch(`${STRAPI_URL}/api/platform-accounts/${state}`, {
         method: 'PUT',
