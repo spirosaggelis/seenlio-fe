@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 2. TikTok redirects here with ?code=XXX&state=ACCOUNT_ID
  * 3. We exchange the code for access_token + refresh_token
  * 4. Save credentials to the platform account in Strapi
- * 5. Redirect back to dashboard/channels
+ * 5. Redirect back to dashboard/channels (use NEXT_PUBLIC_SITE_URL so Location is not localhost:PORT behind a proxy)
  */
 
 const STRAPI_URL = process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL || '';
@@ -17,10 +17,24 @@ const TIKTOK_CLIENT_KEY =
   process.env.TIKTOK_CLIENT_KEY || process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY || '';
 const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET || '';
 
-function getRedirectUri(req: NextRequest) {
+/** Public site origin; avoids Host/req.url showing reverse-proxy internal host (e.g. localhost:5000). */
+function getPublicSiteOrigin(): string | null {
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || '').trim().replace(/\/+$/, '');
+  return base || null;
+}
+
+function getTokenRedirectUri(req: NextRequest): string {
+  const origin = getPublicSiteOrigin();
+  if (origin) return `${origin}/api/auth/tiktok/callback`;
   const proto = req.headers.get('x-forwarded-proto') || 'http';
   const host = req.headers.get('host') || 'localhost:3000';
   return `${proto}://${host}/api/auth/tiktok/callback`;
+}
+
+function dashboardChannelsUrl(req: NextRequest): URL {
+  const origin = getPublicSiteOrigin();
+  if (origin) return new URL(`${origin}/dashboard/channels`);
+  return new URL('/dashboard/channels', req.url);
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -29,7 +43,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const state = searchParams.get('state'); // platform account documentId
   const error = searchParams.get('error');
 
-  const dashboardUrl = new URL('/dashboard/channels', req.url);
+  const dashboardUrl = dashboardChannelsUrl(req);
 
   if (error) {
     dashboardUrl.searchParams.set('error', `TikTok auth failed: ${error}`);
@@ -50,7 +64,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         client_secret: TIKTOK_CLIENT_SECRET,
         code,
         grant_type: 'authorization_code',
-        redirect_uri: getRedirectUri(req),
+        redirect_uri: getTokenRedirectUri(req),
       }),
     });
 
