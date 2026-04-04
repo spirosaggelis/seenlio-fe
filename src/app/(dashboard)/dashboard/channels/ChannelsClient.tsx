@@ -244,7 +244,9 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
       process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
 
     if (account.platform === 'tiktok') {
-      const clientKey = prompt('Enter your TikTok Client Key:');
+      const clientKey =
+        process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY ||
+        prompt('Enter your TikTok Client Key:');
       if (!clientKey) return;
 
       const redirectUri = `${currentUrl}/api/auth/tiktok/callback`;
@@ -257,7 +259,9 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
         `&state=${account.id}`;
       window.location.href = authUrl;
     } else if (account.platform === 'youtube') {
-      const clientId = prompt('Enter your Google Client ID:');
+      const clientId =
+        process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+        prompt('Enter your Google Client ID:');
       if (!clientId) return;
 
       const redirectUri = `${currentUrl}/api/auth/youtube/callback`;

@@ -13,7 +13,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const STRAPI_URL = process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL || '';
 const API_TOKEN = process.env.STRAPI_API_TOKEN || '';
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_ID =
+  process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 
 function getRedirectUri(req: NextRequest) {

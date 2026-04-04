@@ -13,7 +13,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const STRAPI_URL = process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL || '';
 const API_TOKEN = process.env.STRAPI_API_TOKEN || '';
-const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY || '';
+const TIKTOK_CLIENT_KEY =
+  process.env.TIKTOK_CLIENT_KEY || process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY || '';
 const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET || '';
 
 function getRedirectUri(req: NextRequest) {
