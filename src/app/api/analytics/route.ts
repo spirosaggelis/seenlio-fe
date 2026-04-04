@@ -100,7 +100,7 @@ async function lookupProductId(productCode: string): Promise<number | null> {
   if (!strapiUrl || !apiToken || !productCode) return null;
   try {
     const res = await fetch(
-      `${strapiUrl}/api/products?filters[productCode][$eq]=${encodeURIComponent(productCode)}&fields[0]=id`,
+      `${strapiUrl}/api/products?filters[productCode][$eq]=${encodeURIComponent(productCode)}&filters[productStatus][$eq]=published&fields[0]=id`,
       { headers: { Authorization: `Bearer ${apiToken}` }, next: { revalidate: 300 } },
     );
     if (!res.ok) return null;

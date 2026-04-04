@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProduct, getProducts, getSettings } from "@/lib/strapi";
+import { getProduct, getProducts, getSettings, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
 import { buildAffiliateUrl } from "@/lib/analytics";
 import TrendBadge from "@/components/TrendBadge";
 import PriceDisplay from "@/components/PriceDisplay";
@@ -38,6 +38,7 @@ interface Category {
   slug: string;
   icon?: string;
   color?: string;
+  isActive?: boolean;
 }
 
 interface ProductData {
@@ -261,14 +262,19 @@ export default async function ProductPage({ params }: PageProps) {
 
 
   // Fetch related products from the same category
+  // Filter to only active categories for display
+  const activeCategories = product.categories?.filter(
+    (c) => c.isActive !== false,
+  ) ?? [];
+
   let relatedProducts: RelatedProduct[] = [];
-  if (product.categories?.[0]) {
+  if (activeCategories[0]) {
     try {
       const res = await getProducts({
         filters: {
-          categories: { slug: { $eq: product.categories[0].slug } },
+          ...PUBLISHED_PRODUCT_FILTER,
+          categories: { slug: { $eq: activeCategories[0].slug } },
           slug: { $ne: product.slug },
-          productStatus: { $in: ["approved", "video_queued", "video_ready", "published"] },
         },
         pagination: { pageSize: 4 },
         sort: ["trendScore:desc"],
@@ -293,13 +299,13 @@ export default async function ProductPage({ params }: PageProps) {
           <svg className="w-4 h-4 shrink-0 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
-          {product.categories?.[0] && (
+          {activeCategories[0] && (
             <>
               <Link
-                href={`/categories/${product.categories[0].slug}`}
+                href={`/categories/${activeCategories[0].slug}`}
                 className="hover:text-purple-400 transition-colors whitespace-nowrap"
               >
-                {product.categories[0].name}
+                {activeCategories[0].name}
               </Link>
               <svg className="w-4 h-4 shrink-0 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -355,7 +361,7 @@ export default async function ProductPage({ params }: PageProps) {
               {product.trendScore != null && product.trendScore > 0 && (
                 <TrendBadge score={product.trendScore} size="lg" showLabel />
               )}
-              {product.categories?.map((cat) => (
+              {activeCategories.map((cat) => (
                 <Link
                   key={cat.id}
                   href={`/categories/${cat.slug}`}
@@ -404,10 +410,10 @@ export default async function ProductPage({ params }: PageProps) {
           <section className="mt-24">
             <SectionHeader
               title="You Might Also Like"
-              subtitle={`More from ${product.categories?.[0]?.name || "this category"}`}
+              subtitle={`More from ${activeCategories[0]?.name || "this category"}`}
               viewAllHref={
-                product.categories?.[0]
-                  ? `/categories/${product.categories[0].slug}`
+                activeCategories[0]
+                  ? `/categories/${activeCategories[0].slug}`
                   : "/products"
               }
             />

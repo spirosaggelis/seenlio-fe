@@ -61,8 +61,22 @@ function buildQuery(options: FetchOptions = {}): string {
 
 function flattenObject(obj: Record<string, unknown>, prefix: string, params: URLSearchParams) {
   for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) continue;
     const fullKey = `${prefix}[${key}]`;
-    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    if (value === null) {
+      params.set(fullKey, '');
+      continue;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => {
+        const itemKey = `${fullKey}[${index}]`;
+        if (item !== null && typeof item === 'object' && !Array.isArray(item)) {
+          flattenObject(item as Record<string, unknown>, itemKey, params);
+        } else if (item !== null && item !== undefined) {
+          params.set(itemKey, String(item));
+        }
+      });
+    } else if (typeof value === 'object') {
       flattenObject(value as Record<string, unknown>, fullKey, params);
     } else {
       params.set(fullKey, String(value));
@@ -95,20 +109,54 @@ async function fetchStrapi<T>(path: string, options: FetchOptions = {}, fetchOpt
   return res.json();
 }
 
+/** Strapi REST filter: products visible on the public storefront (not draft pipeline states). */
+export const PUBLISHED_PRODUCT_FILTER = {
+  productStatus: { $eq: 'published' },
+} as const;
+
+/** Strip inactive categories from a list of products */
+function stripInactiveCategories<T>(products: T[]): T[] {
+  return products.map((p) => {
+    const product = p as Record<string, unknown>;
+    if (Array.isArray(product.categories)) {
+      product.categories = (product.categories as Array<Record<string, unknown>>).filter(
+        (c) => c.isActive !== false,
+      );
+    }
+    return p;
+  });
+}
+
 export async function getProducts(options: FetchOptions = {}) {
-  return fetchStrapi<unknown[]>('/products', {
+  const res = await fetchStrapi<unknown[]>('/products', {
     populate: ['categories', 'media', 'pricePoints', 'featuredImage'],
     ...options,
   });
+
+  if (Array.isArray(res.data)) {
+    res.data = stripInactiveCategories(res.data);
+  }
+
+  return res;
 }
 
 export async function getProduct(slug: string) {
   const res = await fetchStrapi<unknown[]>('/products', {
-    filters: { slug: { $eq: slug } },
+    filters: { slug: { $eq: slug }, ...PUBLISHED_PRODUCT_FILTER },
     populate: ['categories', 'affiliateLinks', 'media', 'pricePoints', 'seo', 'featuredImage', 'videos'],
   });
 
-  return res.data?.[0] || null;
+  const product = res.data?.[0] as Record<string, unknown> | undefined;
+  if (!product) return null;
+
+  // Strip inactive categories at the data layer
+  if (Array.isArray(product.categories)) {
+    product.categories = (product.categories as Array<Record<string, unknown>>).filter(
+      (c) => c.isActive !== false,
+    );
+  }
+
+  return product;
 }
 
 export async function lookupProduct(code: string) {
@@ -151,7 +199,7 @@ export async function getCategories(options: FetchOptions = {}) {
 
 export async function getCategory(slug: string) {
   const res = await fetchStrapi<unknown[]>('/categories', {
-    filters: { slug: { $eq: slug } },
+    filters: { slug: { $eq: slug }, isActive: { $eq: true } },
     populate: ['seo', 'iconImage'],
   });
 

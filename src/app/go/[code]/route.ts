@@ -107,7 +107,7 @@ async function lookupProduct(
 ): Promise<ProductResult | null> {
   try {
     const res = await fetch(
-      `${STRAPI_URL}/api/products?filters[productCode][$eq]=${encodeURIComponent(code)}&populate[0]=affiliateLinks&fields[0]=id&fields[1]=productCode&fields[2]=sourceUrl&fields[3]=sourcePlatform`,
+      `${STRAPI_URL}/api/products?filters[productCode][$eq]=${encodeURIComponent(code)}&filters[productStatus][$eq]=published&populate[0]=affiliateLinks&fields[0]=id&fields[1]=productCode&fields[2]=sourceUrl&fields[3]=sourcePlatform`,
       {
         headers: STRAPI_TOKEN
           ? { Authorization: `Bearer ${STRAPI_TOKEN}` }

@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useConsent } from '@/providers/ConsentProvider';
 
 export default function ScrollToTop() {
   const [visible, setVisible] = useState(false);
+  const { ready, hasConsented } = useConsent();
+  const showBannerOffset = ready && !hasConsented;
 
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > 400);
@@ -16,7 +19,7 @@ export default function ScrollToTop() {
       type='button'
       aria-label='Scroll to top'
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-      className={`fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full glass-heavy flex items-center justify-center text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] hover:border-[var(--accent-purple)] shadow-lg shadow-black/40 transition-all duration-300 ${
+      className={`fixed ${showBannerOffset ? 'bottom-28' : 'bottom-6'} right-6 z-50 w-11 h-11 rounded-full glass-heavy flex items-center justify-center text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] hover:border-[var(--accent-purple)] shadow-lg shadow-black/40 transition-all duration-300 ${
         visible
           ? 'opacity-100 translate-y-0'
           : 'opacity-0 translate-y-4 pointer-events-none'

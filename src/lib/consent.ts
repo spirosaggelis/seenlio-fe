@@ -4,13 +4,19 @@ export interface ConsentPreferences {
   essential: true;
   analytics: boolean;
   marketing: boolean;
+  adStorage: boolean;
+  adUserData: boolean;
+  adPersonalization: boolean;
   timestamp: number;
 }
 
 export const DEFAULT_PREFERENCES: ConsentPreferences = {
   essential: true,
   analytics: true,
-  marketing: false,
+  marketing: true,
+  adStorage: true,
+  adUserData: true,
+  adPersonalization: true,
   timestamp: 0,
 };
 
@@ -32,7 +38,15 @@ export function getConsentFromCookie(): ConsentPreferences | null {
     if (typeof parsed.analytics !== 'boolean' || typeof parsed.marketing !== 'boolean') {
       return null;
     }
-    return { ...parsed, essential: true };
+    return {
+      essential: true,
+      analytics: parsed.analytics ?? true,
+      marketing: parsed.marketing ?? true,
+      adStorage: parsed.adStorage ?? parsed.marketing ?? true,
+      adUserData: parsed.adUserData ?? parsed.marketing ?? true,
+      adPersonalization: parsed.adPersonalization ?? parsed.marketing ?? true,
+      timestamp: parsed.timestamp ?? 0,
+    };
   } catch {
     return null;
   }

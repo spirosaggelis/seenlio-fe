@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { getProducts } from '@/lib/strapi';
+import { getProducts, PUBLISHED_PRODUCT_FILTER } from '@/lib/strapi';
 import ProductCard from '@/components/ProductCard';
 import ProductGrid from '@/components/ProductGrid';
 
@@ -39,7 +39,7 @@ export default async function ProductsPage() {
 
   try {
     const res = await getProducts({
-      filters: { productStatus: { $eq: 'published' } },
+      filters: { ...PUBLISHED_PRODUCT_FILTER },
       sort: ['trendScore:desc'],
       pagination: { pageSize: 24 },
     });

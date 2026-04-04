@@ -64,6 +64,7 @@ if (typeof window !== 'undefined') {
 
 function enqueue(payload: SiteEventPayload): void {
   if (typeof window === 'undefined') return;
+  if (window.location.pathname.startsWith('/dashboard')) return;
   buffer.push({
     ...payload,
     page: payload.page ?? window.location.pathname,

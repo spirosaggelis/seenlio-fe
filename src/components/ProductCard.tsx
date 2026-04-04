@@ -18,6 +18,7 @@ interface Category {
   id: number;
   name: string;
   slug: string;
+  isActive?: boolean;
 }
 
 interface ProductCardProps {
@@ -122,7 +123,7 @@ export default function ProductCard({
         <div className="flex items-center justify-between gap-2 pt-1">
           {/* Category tags */}
           <div className="flex flex-wrap gap-1.5 min-w-0">
-            {categories?.slice(0, 2).map((cat) => (
+            {categories?.filter((c) => c.isActive !== false).slice(0, 2).map((cat) => (
               <span
                 key={cat.id}
                 className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/20 truncate"

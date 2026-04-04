@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { getCategory, getProducts } from "@/lib/strapi";
+import { getCategory, getProducts, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
 import ProductCard from "@/components/ProductCard";
 import ProductGrid from "@/components/ProductGrid";
 import CategoryBrowseTracker from "@/components/CategoryBrowseTracker";
@@ -99,8 +99,8 @@ export default async function CategoryPage({ params }: PageProps) {
     getCategory(slug) as Promise<CategoryData | null>,
     getProducts({
       filters: {
+        ...PUBLISHED_PRODUCT_FILTER,
         categories: { slug: { $eq: slug } },
-        productStatus: { $in: ["approved", "video_queued", "video_ready", "published"] },
       },
       sort: ["trendScore:desc"],
       pagination: { pageSize: 48 },

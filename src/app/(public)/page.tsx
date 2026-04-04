@@ -1,4 +1,4 @@
-import { getTrendingProducts, getCategories, getProducts } from "@/lib/strapi";
+import { getTrendingProducts, getCategories, getProducts, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
 import HeroSection from "@/components/HeroSection";
 import SectionHeader from "@/components/SectionHeader";
 import ProductCard from "@/components/ProductCard";
@@ -52,26 +52,21 @@ export default async function HomePage() {
       getTrendingProducts(),
       getCategories({ pagination: { pageSize: 10 } }),
       getProducts({
-        filters: { productStatus: { $eq: "published" } },
+        filters: { ...PUBLISHED_PRODUCT_FILTER },
         sort: ["createdAt:desc"],
         pagination: { pageSize: 8 },
       }),
       getProducts({
+        filters: { ...PUBLISHED_PRODUCT_FILTER },
         fields: ["id"],
         pagination: { pageSize: 1 },
       }),
-      getProducts({
-        fields: ["id"],
-        pagination: { pageSize: 1 },
-      }).then(() =>
-        // Fetch page view count from site-events
-        fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'}/api/site-events?filters[event_type][$eq]=page_view&pagination[pageSize]=1&fields[0]=id`, {
-          headers: {
-            ...(process.env.STRAPI_API_TOKEN ? { Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}` } : {}),
-          },
-          next: { revalidate: 300 },
-        }).then(r => r.ok ? r.json() : { meta: { pagination: { total: 0 } } })
-      ),
+      fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'}/api/site-events?filters[event_type][$eq]=page_view&pagination[pageSize]=1&fields[0]=id`, {
+        headers: {
+          ...(process.env.STRAPI_API_TOKEN ? { Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}` } : {}),
+        },
+        next: { revalidate: 300 },
+      }).then((r) => (r.ok ? r.json() : { meta: { pagination: { total: 0 } } })),
     ]);
     trending = (trendingData || []) as Product[];
     categories = (categoryData.data || []) as Category[];
@@ -140,7 +135,13 @@ export default async function HomePage() {
               title="Browse Categories"
               subtitle="Explore products by category"
             />
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className={`grid gap-4 mx-auto ${
+              categories.length <= 3
+                ? 'grid-cols-1 sm:grid-cols-3 max-w-3xl'
+                : categories.length <= 4
+                  ? 'grid-cols-2 sm:grid-cols-4 max-w-4xl'
+                  : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 w-full'
+            }`}>
               {categories.map((cat, i) => (
                 <div
                   key={cat.id}

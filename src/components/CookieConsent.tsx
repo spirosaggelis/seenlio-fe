@@ -39,21 +39,42 @@ const CATEGORIES = [
   {
     key: 'essential' as const,
     label: 'Essential',
-    description: 'Required for the site to function. Cannot be disabled.',
+    description: 'Required for the site to function. Always active.',
     locked: true,
   },
   {
     key: 'analytics' as const,
     label: 'Analytics',
     description:
-      'Required analytics to understand site usage and improve the experience.',
+      'Helps us understand site usage and improve the experience. Always active.',
     locked: true,
   },
   {
     key: 'marketing' as const,
     label: 'Marketing',
     description:
-      'Used to deliver relevant ads and track campaign performance across platforms.',
+      'Used to deliver relevant ads and track campaign performance.',
+    locked: false,
+  },
+  {
+    key: 'adStorage' as const,
+    label: 'Ad Storage',
+    description:
+      'Enables storage, such as cookies, related to advertising.',
+    locked: false,
+  },
+  {
+    key: 'adUserData' as const,
+    label: 'Ad User Data',
+    description:
+      'Sets consent for sending user data to Google for online advertising purposes.',
+    locked: false,
+  },
+  {
+    key: 'adPersonalization' as const,
+    label: 'Ad Personalization',
+    description:
+      'Sets consent for personalized advertising.',
     locked: false,
   },
 ];
@@ -63,12 +84,15 @@ export default function CookieConsent() {
   const [showSettings, setShowSettings] = useState(false);
   const [analytics, setAnalytics] = useState(DEFAULT_PREFERENCES.analytics);
   const [marketing, setMarketing] = useState(DEFAULT_PREFERENCES.marketing);
+  const [adStorage, setAdStorage] = useState(DEFAULT_PREFERENCES.adStorage);
+  const [adUserData, setAdUserData] = useState(DEFAULT_PREFERENCES.adUserData);
+  const [adPersonalization, setAdPersonalization] = useState(DEFAULT_PREFERENCES.adPersonalization);
 
   // Don't render until client has checked the cookie — prevents flash
   if (!ready || hasConsented) return null;
 
   const handleSave = () => {
-    saveCustom({ analytics, marketing });
+    saveCustom({ analytics, marketing, adStorage, adUserData, adPersonalization });
   };
 
   return (
@@ -110,9 +134,20 @@ export default function CookieConsent() {
                       ? true
                       : cat.key === 'analytics'
                         ? analytics
-                        : marketing;
+                        : cat.key === 'marketing'
+                          ? marketing
+                          : cat.key === 'adStorage'
+                            ? adStorage
+                            : cat.key === 'adUserData'
+                              ? adUserData
+                              : adPersonalization;
+
                   const onChange =
-                    cat.key === 'analytics' ? setAnalytics : setMarketing;
+                    cat.key === 'analytics' ? setAnalytics : 
+                    cat.key === 'marketing' ? setMarketing :
+                    cat.key === 'adStorage' ? setAdStorage :
+                    cat.key === 'adUserData' ? setAdUserData :
+                    cat.key === 'adPersonalization' ? setAdPersonalization : setAnalytics;
 
                   return (
                     <div

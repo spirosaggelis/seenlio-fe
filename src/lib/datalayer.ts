@@ -14,9 +14,9 @@ type ConsentStorage = {
 export function consentToStorageState(prefs: ConsentPreferences): ConsentStorage {
   return {
     analytics_storage: 'granted', // always essential
-    ad_storage: prefs.marketing ? 'granted' : 'denied',
-    ad_user_data: prefs.marketing ? 'granted' : 'denied',
-    ad_personalization: prefs.marketing ? 'granted' : 'denied',
+    ad_storage: prefs.adStorage ? 'granted' : 'denied',
+    ad_user_data: prefs.adUserData ? 'granted' : 'denied',
+    ad_personalization: prefs.adPersonalization ? 'granted' : 'denied',
     functionality_storage: 'granted',
     personalization_storage: 'granted',
   };
@@ -49,6 +49,7 @@ declare global {
 
 export function pushToDataLayer(event: DataLayerEvent): void {
   if (typeof window === 'undefined') return;
+  if (window.location.pathname.startsWith('/dashboard')) return;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push(event as unknown as Record<string, unknown>);
 }

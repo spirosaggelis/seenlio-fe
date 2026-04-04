@@ -17,6 +17,14 @@ const nextConfig: NextConfig = {
       { protocol: 'http', hostname: 'localhost' },
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: '/products_:id.xml',
+        destination: '/api/products-sitemap/:id',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

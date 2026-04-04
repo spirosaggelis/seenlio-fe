@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getProducts } from '@/lib/strapi';
+import { getProducts, PUBLISHED_PRODUCT_FILTER } from '@/lib/strapi';
 
 export const metadata: Metadata = {
   title: 'About Us',
@@ -70,7 +70,7 @@ async function fetchStats() {
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
     const [productData, viewData] = await Promise.all([
-      getProducts({ fields: ['id'], pagination: { pageSize: 1 } }),
+      getProducts({ filters: { ...PUBLISHED_PRODUCT_FILTER }, fields: ['id'], pagination: { pageSize: 1 } }),
       fetch(`${STRAPI_URL}/api/site-events?filters[event_type][$eq]=page_view&pagination[pageSize]=1&fields[0]=id`, {
         headers,
         next: { revalidate: 300 },
