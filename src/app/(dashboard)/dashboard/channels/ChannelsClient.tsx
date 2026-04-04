@@ -250,8 +250,10 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
       if (!clientKey) return;
 
       const redirectUri = `${currentUrl}/api/auth/tiktok/callback`;
-      // Must match scopes enabled for the app in TikTok Developer Portal (Login Kit / Scopes).
-      const scope = 'user.info.basic,video.publish,video.upload';
+      // Comma-separated; must exactly match scopes enabled on this app (Sandbox vs prod differ). See TikTok Scopes in the developer portal.
+      // Do not add user.info.basic here unless that scope is explicitly toggled — it often triggers invalid_scope.
+      const scope =
+        process.env.NEXT_PUBLIC_TIKTOK_LOGIN_SCOPES || 'video.publish,video.upload';
       const authUrl =
         `https://www.tiktok.com/v2/auth/authorize/` +
         `?client_key=${encodeURIComponent(clientKey)}` +
