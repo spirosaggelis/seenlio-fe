@@ -21,13 +21,14 @@ export default function MobileMenu({ links }: MobileMenuProps) {
   return (
     <div className='md:hidden'>
       <details ref={detailsRef} className='group relative'>
-        <summary className='list-none cursor-pointer p-2 rounded-[var(--radius-sm)] hover:bg-[var(--bg-tertiary)] transition-colors'>
+        <summary className='list-none cursor-pointer p-2 rounded-[var(--radius-sm)] hover:bg-[var(--bg-tertiary)] transition-colors' aria-label='Toggle navigation menu'>
           <svg
             className='w-6 h-6 text-[var(--fg-secondary)] group-hover:text-[var(--fg-primary)] transition-colors'
             fill='none'
             viewBox='0 0 24 24'
             strokeWidth={1.8}
             stroke='currentColor'
+            aria-hidden='true'
           >
             <path
               strokeLinecap='round'

@@ -21,6 +21,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com',
   ),
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     title: 'Seenlio',

@@ -77,8 +77,38 @@ export default async function HomePage() {
     // Strapi may not be running yet
   }
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
+  const orgJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Seenlio',
+    url: siteUrl,
+    logo: `${siteUrl}/logo.png`,
+    description: 'Discover the most trending consumer products featured in viral videos.',
+    sameAs: [],
+  };
+  const websiteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Seenlio',
+    url: siteUrl,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${siteUrl}/lookup?q={search_term_string}`,
+      'query-input': 'required name=search_term_string',
+    },
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
       {/* Hero */}
       <HeroSection productCount={productCount} pageViews={pageViews} />
 
