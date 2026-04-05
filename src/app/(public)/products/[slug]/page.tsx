@@ -291,8 +291,46 @@ export default async function ProductPage({ params }: PageProps) {
     }
   }
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com";
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.shortDescription || product.description || product.name,
+    image: product.media
+      ?.filter((m) => m.type !== "video" && m.url)
+      .map((m) => m.url) || [],
+    sku: product.productCode,
+    url: `${siteUrl}/products/${product.slug}`,
+    ...(product.rating != null && product.rating > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: product.rating,
+            bestRating: 5,
+            ...(product.reviewCount ? { reviewCount: product.reviewCount } : {}),
+          },
+        }
+      : {}),
+    ...(currentPrice
+      ? {
+          offers: {
+            "@type": "Offer",
+            price: currentPrice.price,
+            priceCurrency: currentPrice.currency || "USD",
+            availability: "https://schema.org/InStock",
+            url: ctaButtons[0]?.href || `${siteUrl}/products/${product.slug}`,
+          },
+        }
+      : {}),
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Analytics tracker */}
       <ProductViewTracker productCode={product.productCode} />
 
