@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   title: 'Cookie Policy',
   description:
     'Learn about the cookies Seenlio uses and how to manage your preferences.',
+  alternates: { canonical: '/cookies' },
+  openGraph: {
+    title: 'Cookie Policy',
+    description: 'Learn about the cookies Seenlio uses and how to manage your preferences.',
+    url: '/cookies',
+  },
 };
 
 export default function CookiePolicyPage() {

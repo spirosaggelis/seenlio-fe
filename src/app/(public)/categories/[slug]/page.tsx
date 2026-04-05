@@ -89,6 +89,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       url: categoryUrl,
       type: "website",
+      images: [{ url: "/logo.png" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/logo.png"],
     },
   };
 }

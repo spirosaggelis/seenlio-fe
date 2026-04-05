@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   title: 'Terms & Conditions',
   description:
     'Read the terms and conditions governing your use of Seenlio.',
+  alternates: { canonical: '/terms' },
+  openGraph: {
+    title: 'Terms & Conditions',
+    description: 'Read the terms and conditions governing your use of Seenlio.',
+    url: '/terms',
+  },
 };
 
 export default function TermsPage() {

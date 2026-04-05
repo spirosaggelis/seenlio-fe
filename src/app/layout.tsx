@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { ConsentProvider } from '@/providers/ConsentProvider';
 import CookieConsent from '@/components/CookieConsent';
@@ -11,10 +11,20 @@ const inter = Inter({
   display: 'swap',
 });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  userScalable: true,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com',
   ),
+  appleWebApp: {
+    capable: true,
+    title: 'Seenlio',
+  },
 };
 
 export default function RootLayout({

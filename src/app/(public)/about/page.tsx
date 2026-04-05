@@ -6,10 +6,18 @@ export const metadata: Metadata = {
   title: 'About Us',
   description:
     'Meet Seenlio — the engine behind trending product discovery. We surface the products breaking the internet before everyone else.',
+  alternates: { canonical: '/about' },
   openGraph: {
     title: 'About Seenlio',
-    description:
-      'We surface the products breaking the internet before everyone else.',
+    description: 'We surface the products breaking the internet before everyone else.',
+    url: '/about',
+    images: [{ url: '/logo.png' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'About Seenlio',
+    description: 'We surface the products breaking the internet before everyone else.',
+    images: ['/logo.png'],
   },
 };
 

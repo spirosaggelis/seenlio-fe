@@ -7,6 +7,19 @@ export const metadata: Metadata = {
   title: "Trending Products",
   description:
     "See the hottest trending products going viral right now, ranked by trend score.",
+  alternates: { canonical: "/trending" },
+  openGraph: {
+    title: "Trending Products",
+    description: "See the hottest trending products going viral right now, ranked by trend score.",
+    url: "/trending",
+    images: [{ url: "/logo.png" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Trending Products",
+    description: "See the hottest trending products going viral right now, ranked by trend score.",
+    images: ["/logo.png"],
+  },
 };
 
 interface MediaItem {

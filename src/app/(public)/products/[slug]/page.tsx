@@ -190,6 +190,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       type: "website",
       ...(ogImage ? { images: [{ url: ogImage }] } : {}),
     },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
   };
 }
 

@@ -7,6 +7,19 @@ export const metadata: Metadata = {
   title: 'All Products',
   description:
     'Browse all trending products featured in viral videos. Sorted by trend score.',
+  alternates: { canonical: '/products' },
+  openGraph: {
+    title: 'All Products',
+    description: 'Browse all trending products featured in viral videos. Sorted by trend score.',
+    url: '/products',
+    images: [{ url: '/logo.png' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'All Products',
+    description: 'Browse all trending products featured in viral videos. Sorted by trend score.',
+    images: ['/logo.png'],
+  },
 };
 
 interface MediaItem {
