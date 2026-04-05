@@ -11,19 +11,25 @@ export const metadata: Metadata = {
   },
   description:
     'Discover the most trending consumer products featured in viral videos. Find kitchen gadgets, tech accessories, home tools, and the next big thing — before everyone else.',
+  alternates: {
+    canonical: '/',
+  },
   openGraph: {
     title: "Seenlio — Discover What's Trending",
     description:
       'Discover the most trending consumer products featured in viral videos. Find the next big thing before everyone else.',
+    url: '/',
     siteName: 'Seenlio',
     type: 'website',
     locale: 'en_US',
+    images: [{ url: '/logo.png', width: 200, height: 60, alt: 'Seenlio' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: "Seenlio — Discover What's Trending",
     description:
       'Discover the most trending consumer products featured in viral videos.',
+    images: ['/logo.png'],
   },
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com',
