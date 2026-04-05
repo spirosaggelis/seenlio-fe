@@ -4,16 +4,16 @@ import { Fragment, useState } from 'react';
 
 interface LogEntry {
   id: string;
-  jobId: string;
-  jobType: string;
-  jobStatus: string;
-  severity: string;
-  startedAt: string;
-  completedAt: string;
-  duration: number;
-  errorMessage?: string;
-  result?: Record<string, number>;
-  payload?: Record<string, unknown>;
+  level: string;
+  event: string;
+  service: string;
+  message?: string;
+  category?: string;
+  source?: string;
+  runId?: string;
+  targetId?: string;
+  context?: Record<string, unknown>;
+  createdAt: string;
 }
 
 interface Pagination {
@@ -28,23 +28,13 @@ interface Props {
   initialPagination: Pagination;
 }
 
-const SEVERITIES = ['', 'debug', 'info', 'warning', 'error'] as const;
-const JOB_TYPES = ['', 'pipeline', 'discovery', 'video_generation', 'publishing', 'analytics_collection', 'categorization'] as const;
-const STATUSES = ['', 'completed', 'failed', 'running', 'pending', 'retrying'] as const;
+const LEVELS = ['', 'debug', 'info', 'warning', 'error'] as const;
 
-const SEVERITY_STYLES: Record<string, string> = {
+const LEVEL_STYLES: Record<string, string> = {
   debug: 'bg-gray-500/20 text-gray-300',
   info: 'bg-blue-500/20 text-blue-300',
   warning: 'bg-yellow-500/20 text-yellow-300',
   error: 'bg-red-500/20 text-red-300',
-};
-
-const STATUS_STYLES: Record<string, string> = {
-  completed: 'bg-green-500/20 text-green-300',
-  failed: 'bg-red-500/20 text-red-300',
-  running: 'bg-blue-500/20 text-blue-300',
-  pending: 'bg-gray-500/20 text-gray-300',
-  retrying: 'bg-yellow-500/20 text-yellow-300',
 };
 
 export default function LogsClient({ initialLogs, initialPagination }: Props) {
@@ -54,20 +44,17 @@ export default function LogsClient({ initialLogs, initialPagination }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   // Filters
-  const [severity, setSeverity] = useState('');
-  const [jobType, setJobType] = useState('');
-  const [jobStatus, setJobStatus] = useState('');
+  const [level, setLevel] = useState('');
+  const [eventFilter, setEventFilter] = useState('');
 
-  async function fetchPage(page: number, sev?: string, type?: string, status?: string) {
+  async function fetchPage(page: number, lvl?: string, evt?: string) {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: '25' });
-      const s = sev ?? severity;
-      const t = type ?? jobType;
-      const st = status ?? jobStatus;
-      if (s) params.set('severity', s);
-      if (t) params.set('jobType', t);
-      if (st) params.set('jobStatus', st);
+      const l = lvl ?? level;
+      const e = evt ?? eventFilter;
+      if (l) params.set('level', l);
+      if (e) params.set('event', e);
 
       const res = await fetch(`/api/dashboard/logs?${params}`);
       const data = await res.json();
@@ -76,19 +63,6 @@ export default function LogsClient({ initialLogs, initialPagination }: Props) {
     } finally {
       setLoading(false);
     }
-  }
-
-  function applyFilter(key: 'severity' | 'jobType' | 'jobStatus', value: string) {
-    if (key === 'severity') { setSeverity(value); fetchPage(1, value, undefined, undefined); }
-    else if (key === 'jobType') { setJobType(value); fetchPage(1, undefined, value, undefined); }
-    else { setJobStatus(value); fetchPage(1, undefined, undefined, value); }
-  }
-
-  function formatDuration(ms: number) {
-    if (!ms) return '-';
-    const sec = Math.round(ms / 1000);
-    if (sec < 60) return `${sec}s`;
-    return `${Math.floor(sec / 60)}m ${sec % 60}s`;
   }
 
   function formatTime(iso: string) {
@@ -103,35 +77,29 @@ export default function LogsClient({ initialLogs, initialPagination }: Props) {
       {/* Filters */}
       <div className='flex flex-wrap gap-3'>
         <select
-          value={severity}
-          onChange={(e) => applyFilter('severity', e.target.value)}
+          value={level}
+          onChange={(e) => { setLevel(e.target.value); fetchPage(1, e.target.value, undefined); }}
           className='bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm text-[var(--fg-primary)] px-3 py-1.5'
         >
-          <option value=''>All Severities</option>
-          {SEVERITIES.filter(Boolean).map((s) => (
-            <option key={s} value={s}>{s}</option>
+          <option value=''>All Levels</option>
+          {LEVELS.filter(Boolean).map((l) => (
+            <option key={l} value={l}>{l}</option>
           ))}
         </select>
-        <select
-          value={jobType}
-          onChange={(e) => applyFilter('jobType', e.target.value)}
-          className='bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm text-[var(--fg-primary)] px-3 py-1.5'
+        <input
+          type='text'
+          value={eventFilter}
+          onChange={(e) => setEventFilter(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') fetchPage(1, undefined, eventFilter); }}
+          placeholder='Filter by event...'
+          className='bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm text-[var(--fg-primary)] px-3 py-1.5 w-56'
+        />
+        <button
+          onClick={() => fetchPage(1, undefined, eventFilter)}
+          className='text-xs px-3 py-1.5 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)] transition-colors'
         >
-          <option value=''>All Job Types</option>
-          {JOB_TYPES.filter(Boolean).map((t) => (
-            <option key={t} value={t}>{t.replace('_', ' ')}</option>
-          ))}
-        </select>
-        <select
-          value={jobStatus}
-          onChange={(e) => applyFilter('jobStatus', e.target.value)}
-          className='bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm text-[var(--fg-primary)] px-3 py-1.5'
-        >
-          <option value=''>All Statuses</option>
-          {STATUSES.filter(Boolean).map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
+          Search
+        </button>
 
         <span className='ml-auto text-xs text-[var(--fg-muted)] self-center'>
           {pagination.total} total logs
@@ -145,11 +113,11 @@ export default function LogsClient({ initialLogs, initialPagination }: Props) {
             <thead>
               <tr className='text-xs text-[var(--fg-muted)] uppercase tracking-wider border-b border-[var(--border-subtle)]'>
                 <th className='text-left px-5 py-3'>Time</th>
-                <th className='text-left px-5 py-3'>Severity</th>
-                <th className='text-left px-5 py-3'>Type</th>
-                <th className='text-center px-5 py-3'>Status</th>
-                <th className='text-center px-5 py-3'>Duration</th>
-                <th className='text-left px-5 py-3'>Job ID</th>
+                <th className='text-left px-5 py-3'>Level</th>
+                <th className='text-left px-5 py-3'>Event</th>
+                <th className='text-left px-5 py-3'>Message</th>
+                <th className='text-left px-5 py-3'>Category</th>
+                <th className='text-left px-5 py-3'>Source</th>
               </tr>
             </thead>
             <tbody>
@@ -166,27 +134,31 @@ export default function LogsClient({ initialLogs, initialPagination }: Props) {
                     onClick={() => setExpanded(expanded === log.id ? null : log.id)}
                     className='border-b border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer'
                   >
-                    <td className='px-5 py-3 text-[var(--fg-primary)]'>
-                      {formatTime(log.startedAt)}
+                    <td className='px-5 py-3 text-[var(--fg-primary)] whitespace-nowrap'>
+                      {formatTime(log.createdAt)}
                     </td>
                     <td className='px-5 py-3'>
-                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${SEVERITY_STYLES[log.severity] || SEVERITY_STYLES.info}`}>
-                        {log.severity || 'info'}
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${LEVEL_STYLES[log.level] || LEVEL_STYLES.info}`}>
+                        {log.level || 'info'}
                       </span>
                     </td>
-                    <td className='px-5 py-3 text-[var(--fg-secondary)]'>
-                      {(log.jobType || '').replace('_', ' ')}
+                    <td className='px-5 py-3 text-[var(--fg-secondary)] font-mono text-xs'>
+                      {log.event}
                     </td>
-                    <td className='px-5 py-3 text-center'>
-                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLES[log.jobStatus] || ''}`}>
-                        {log.jobStatus}
-                      </span>
+                    <td className='px-5 py-3 text-[var(--fg-primary)] max-w-xs truncate'>
+                      {log.message || '-'}
                     </td>
-                    <td className='px-5 py-3 text-center text-[var(--fg-muted)]'>
-                      {formatDuration(log.duration)}
+                    <td className='px-5 py-3 text-[var(--fg-muted)]'>
+                      {log.category || '-'}
                     </td>
-                    <td className='px-5 py-3 text-[var(--fg-muted)] font-mono text-xs'>
-                      {log.jobId}
+                    <td className='px-5 py-3'>
+                      {log.source ? (
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                          log.source === 'amazon' ? 'bg-orange-500/20 text-orange-300' : 'bg-red-500/20 text-red-300'
+                        }`}>
+                          {log.source}
+                        </span>
+                      ) : '-'}
                     </td>
                   </tr>
 
@@ -195,34 +167,43 @@ export default function LogsClient({ initialLogs, initialPagination }: Props) {
                     <tr key={`${log.id}-detail`} className='border-b border-[var(--border-subtle)]'>
                       <td colSpan={6} className='px-5 py-4 bg-[var(--bg-tertiary)]'>
                         <div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-sm'>
-                          {log.result && Object.keys(log.result).length > 0 && (
-                            <div>
-                              <p className='text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-2'>Result</p>
-                              <div className='flex flex-wrap gap-3'>
-                                {Object.entries(log.result).map(([key, val]) => (
-                                  <div key={key} className='bg-[var(--bg-secondary)] rounded px-3 py-1.5 border border-[var(--border-subtle)]'>
-                                    <span className='text-[var(--fg-muted)] text-xs'>{key.replace('_', ' ')}: </span>
-                                    <span className='text-[var(--fg-primary)] font-medium'>{val}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {log.errorMessage && (
-                            <div>
-                              <p className='text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-2'>Error</p>
-                              <p className='text-red-400 text-sm font-mono bg-red-500/10 rounded px-3 py-2 border border-red-500/20'>
-                                {log.errorMessage}
-                              </p>
+                          {log.message && (
+                            <div className='md:col-span-2'>
+                              <p className='text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-2'>Message</p>
+                              <p className='text-[var(--fg-primary)]'>{log.message}</p>
                             </div>
                           )}
                           <div>
-                            <p className='text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-2'>Timing</p>
-                            <p className='text-[var(--fg-secondary)] text-xs'>
-                              Started: {formatTime(log.startedAt)}<br />
-                              Completed: {formatTime(log.completedAt)}
-                            </p>
+                            <p className='text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-2'>Details</p>
+                            <div className='flex flex-wrap gap-3'>
+                              {log.service && (
+                                <div className='bg-[var(--bg-secondary)] rounded px-3 py-1.5 border border-[var(--border-subtle)]'>
+                                  <span className='text-[var(--fg-muted)] text-xs'>service: </span>
+                                  <span className='text-[var(--fg-primary)] font-medium'>{log.service}</span>
+                                </div>
+                              )}
+                              {log.runId && (
+                                <div className='bg-[var(--bg-secondary)] rounded px-3 py-1.5 border border-[var(--border-subtle)]'>
+                                  <span className='text-[var(--fg-muted)] text-xs'>run: </span>
+                                  <span className='text-[var(--fg-primary)] font-mono font-medium'>{log.runId}</span>
+                                </div>
+                              )}
+                              {log.targetId && (
+                                <div className='bg-[var(--bg-secondary)] rounded px-3 py-1.5 border border-[var(--border-subtle)]'>
+                                  <span className='text-[var(--fg-muted)] text-xs'>target: </span>
+                                  <span className='text-[var(--fg-primary)] font-mono font-medium'>{log.targetId}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
+                          {log.context && Object.keys(log.context).length > 0 && (
+                            <div>
+                              <p className='text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-2'>Context</p>
+                              <pre className='text-xs text-[var(--fg-secondary)] bg-[var(--bg-secondary)] rounded px-3 py-2 border border-[var(--border-subtle)] overflow-x-auto'>
+                                {JSON.stringify(log.context, null, 2)}
+                              </pre>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

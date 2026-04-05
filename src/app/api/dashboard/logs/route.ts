@@ -20,17 +20,17 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const { searchParams } = req.nextUrl;
     const page = Number(searchParams.get('page') || '1');
     const pageSize = Number(searchParams.get('pageSize') || '25');
-    const severity = searchParams.get('severity') || '';
-    const jobType = searchParams.get('jobType') || '';
-    const jobStatus = searchParams.get('jobStatus') || '';
+    const level = searchParams.get('level') || '';
+    const service = searchParams.get('service') || '';
+    const event = searchParams.get('event') || '';
 
     let filterStr = '';
-    if (severity) filterStr += `&filters[severity][$eq]=${severity}`;
-    if (jobType) filterStr += `&filters[jobType][$eq]=${jobType}`;
-    if (jobStatus) filterStr += `&filters[jobStatus][$eq]=${jobStatus}`;
+    if (level) filterStr += `&filters[level][$eq]=${level}`;
+    if (service) filterStr += `&filters[service][$eq]=${service}`;
+    if (event) filterStr += `&filters[event][$contains]=${event}`;
 
     const result = await strapiGet(
-      `/job-logs?sort=createdAt:desc&pagination[page]=${page}&pagination[pageSize]=${pageSize}${filterStr}`,
+      `/app-logs?sort=createdAt:desc&pagination[page]=${page}&pagination[pageSize]=${pageSize}${filterStr}`,
     );
 
     const logs = (result.data || []).map((j: Record<string, unknown>) => {

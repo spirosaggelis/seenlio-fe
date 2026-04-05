@@ -1,23 +1,23 @@
 import { getBaseUrl } from '@/lib/dashboard-api';
 import LogsClient from './LogsClient';
 
+interface LogEntry {
+  id: string;
+  level: string;
+  event: string;
+  service: string;
+  message?: string;
+  category?: string;
+  source?: string;
+  runId?: string;
+  targetId?: string;
+  context?: Record<string, unknown>;
+  createdAt: string;
+}
+
 interface LogsData {
   logs: LogEntry[];
   pagination: { page: number; pageSize: number; pageCount: number; total: number };
-}
-
-export interface LogEntry {
-  id: string;
-  jobId: string;
-  jobType: string;
-  jobStatus: string;
-  severity: string;
-  startedAt: string;
-  completedAt: string;
-  duration: number;
-  errorMessage?: string;
-  result?: Record<string, number>;
-  payload?: Record<string, unknown>;
 }
 
 async function fetchLogs(): Promise<LogsData> {
@@ -33,9 +33,9 @@ export default async function LogsPage() {
   return (
     <div className='space-y-8'>
       <div>
-        <h1 className='text-2xl font-bold text-[var(--fg-primary)]'>Job Logs</h1>
+        <h1 className='text-2xl font-bold text-[var(--fg-primary)]'>Application Logs</h1>
         <p className='text-sm text-[var(--fg-muted)] mt-1'>
-          Pipeline execution history and service logs
+          Detailed pipeline events and service logs with severity levels
         </p>
       </div>
 
