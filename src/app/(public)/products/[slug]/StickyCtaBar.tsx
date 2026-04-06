@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { trackAffiliateClick } from '@/lib/analytics';
 
 interface StickyCtaBarProps {
   buttons: Array<{
@@ -79,6 +80,7 @@ export default function StickyCtaBar({ buttons, productCode, price, productName,
                 href={btn.href}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackAffiliateClick(productCode, btn.platform, btn.href, 'sticky_bar')}
                 data-product-code={productCode}
                 data-platform={btn.platform}
                 className={`relative flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-white overflow-hidden transition-all duration-200 hover:scale-105 active:scale-95 ${

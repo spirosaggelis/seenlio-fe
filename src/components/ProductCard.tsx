@@ -1,5 +1,5 @@
 import Image from "next/image";
-import ProductCardLink from "./ProductCardLink";
+import Link from "next/link";
 import TrendBadge from "./TrendBadge";
 import PriceDisplay from "./PriceDisplay";
 import StarRating from "./StarRating";
@@ -45,9 +45,8 @@ export default function ProductCard({
   const price = pricePoints?.[0];
 
   return (
-    <ProductCardLink
+    <Link
       href={`/products/${slug}`}
-      productCode={productCode}
       className="group relative flex flex-col rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:border-purple-500/40 hover:shadow-[0_0_30px_-5px_rgba(139,92,246,0.3)]"
     >
       {/* Image */}
@@ -134,6 +133,6 @@ export default function ProductCard({
           </span>
         </div>
       </div>
-    </ProductCardLink>
+    </Link>
   );
 }

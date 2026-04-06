@@ -15,11 +15,9 @@ try {
 type EventType =
   | 'page_view'
   | 'product_view'
-  | 'product_click'
   | 'affiliate_click'
   | 'search'
-  | 'category_browse'
-  | 'filter_use';
+  | 'category_browse';
 
 type DeviceType = 'mobile' | 'desktop' | 'tablet' | 'unknown';
 
@@ -44,9 +42,8 @@ interface SiteEventPayload {
   product_code?: string;
   query?: string;
   results_count?: number;
-  filters_json?: Record<string, unknown>;
   affiliate_platform?: AffiliatePlatform;
-  duration_ms?: number;
+  click_source?: string;
   referrer?: string;
   metadata?: Record<string, unknown>;
 }
@@ -153,14 +150,13 @@ async function processEvent(event: SiteEventPayload, req: NextRequest): Promise<
     page: event.page ?? null,
     query: event.query ?? null,
     results_count: event.results_count ?? null,
-    filters_json: event.filters_json ?? null,
+    click_source: event.click_source ?? null,
     ip_hash: ipHash,
     country,
     device_type: deviceType,
     referrer: referrer || null,
     referrer_source: referrerSource,
     affiliate_platform: event.affiliate_platform ?? null,
-    duration_ms: event.duration_ms ?? null,
     metadata: event.metadata ?? null,
   };
 

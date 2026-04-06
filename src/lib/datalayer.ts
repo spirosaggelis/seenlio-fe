@@ -1,4 +1,5 @@
 import type { ConsentPreferences } from './consent';
+import { isAnalyticsDisabled } from '@/utils/analyticsDisable';
 
 // ─── Consent state mapping ───────────────────────────────────────────────────
 
@@ -27,11 +28,9 @@ export function consentToStorageState(prefs: ConsentPreferences): ConsentStorage
 export type DataLayerEvent =
   | { event: 'page_view'; page_path: string; page_title?: string }
   | { event: 'product_view'; product_code: string; page_path: string }
-  | { event: 'product_click'; product_code: string; page_path: string }
-  | { event: 'affiliate_click'; product_code: string; platform: string; url: string }
+  | { event: 'affiliate_click'; product_code: string; platform: string; url: string; click_source: string }
   | { event: 'search'; query: string; results_count: number }
   | { event: 'category_browse'; category_slug: string }
-  | { event: 'filter_use'; filters: Record<string, unknown>; page_path: string }
   | {
       event: 'cookie_consent';
       consent_action: 'accept_all' | 'reject_all' | 'save_custom';
@@ -49,6 +48,7 @@ declare global {
 
 export function pushToDataLayer(event: DataLayerEvent): void {
   if (typeof window === 'undefined') return;
+  if (isAnalyticsDisabled()) return;
   if (window.location.pathname.startsWith('/dashboard')) return;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push(event as unknown as Record<string, unknown>);

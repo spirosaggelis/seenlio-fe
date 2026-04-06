@@ -2,7 +2,6 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProduct, getProducts, getSettings, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
-import { buildAffiliateUrl } from "@/lib/analytics";
 import TrendBadge from "@/components/TrendBadge";
 import PriceDisplay from "@/components/PriceDisplay";
 import StarRating from "@/components/StarRating";
@@ -11,6 +10,7 @@ import ProductImageGallery from "@/components/ProductImageGallery";
 import SectionHeader from "@/components/SectionHeader";
 import ProductViewTracker from "./ProductViewTracker";
 import StickyCtaBar from "./StickyCtaBar";
+import AffiliateButton from "./AffiliateButton";
 
 interface AffiliateLink {
   platform: string;
@@ -79,6 +79,14 @@ interface AffiliatePattern {
   extraParams?: Record<string, string>;
   useGeoRedirect?: boolean;
   isActive?: boolean;
+}
+
+function buildAffiliateUrl(baseUrl: string, productCode: string, platform: string): string {
+  const url = new URL(baseUrl);
+  url.searchParams.set('utm_source', 'seenlio');
+  url.searchParams.set('utm_medium', platform);
+  url.searchParams.set('utm_campaign', productCode);
+  return url.toString();
 }
 
 /** Extract ASIN from any amazon.com/dp/XXXXXXXXXX URL */
@@ -497,47 +505,5 @@ export default async function ProductPage({ params }: PageProps) {
         />
       )}
     </div>
-  );
-}
-
-/* Affiliate button as a client component inline */
-function AffiliateButton({
-  href,
-  platform,
-  label,
-  productCode,
-  gradient,
-  icon,
-}: {
-  href: string;
-  platform: string;
-  label: string;
-  productCode: string;
-  gradient: string;
-  icon: string;
-}) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      data-product-code={productCode}
-      data-platform={platform}
-      className="group relative flex items-center justify-center gap-3 w-full rounded-xl px-6 py-4 font-semibold text-white overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg"
-    >
-      <div className={`absolute inset-0 bg-gradient-to-r ${gradient}`} />
-      <div className={`absolute inset-0 bg-gradient-to-r ${gradient} blur-xl opacity-30 group-hover:opacity-50 transition-opacity`} />
-      <span className="relative text-lg">{icon}</span>
-      <span className="relative">{label}</span>
-      <svg
-        className="relative w-5 h-5 transition-transform group-hover:translate-x-1"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={2}
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-      </svg>
-    </a>
   );
 }

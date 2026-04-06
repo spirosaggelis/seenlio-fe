@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import { ConsentProvider } from '@/providers/ConsentProvider';
 import CookieConsent from '@/components/CookieConsent';
 import GtmScript, { GtmNoscript } from '@/components/GtmScript';
+import AnalyticsConsole from '@/components/AnalyticsConsole';
 import './globals.css';
 
 const inter = Inter({
@@ -47,6 +48,7 @@ export default function RootLayout({
         <ConsentProvider>
           {children}
           <CookieConsent />
+          <AnalyticsConsole />
         </ConsentProvider>
       </body>
     </html>
