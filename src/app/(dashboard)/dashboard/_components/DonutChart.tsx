@@ -25,7 +25,10 @@ const DEFAULT_COLORS = [
   '#a78bfa',
 ];
 
-export default function DonutChart({ data, colors = DEFAULT_COLORS }: DonutChartProps) {
+export default function DonutChart({
+  data,
+  colors = DEFAULT_COLORS,
+}: DonutChartProps) {
   return (
     <ResponsiveContainer width='100%' height={260}>
       <PieChart>
@@ -39,22 +42,23 @@ export default function DonutChart({ data, colors = DEFAULT_COLORS }: DonutChart
           dataKey='value'
         >
           {data.map((_, i) => (
-            <Cell
-              key={i}
-              fill={colors[i % colors.length]}
-              stroke='none'
-            />
+            <Cell key={i} fill={colors[i % colors.length]} stroke='none' />
           ))}
         </Pie>
         <Tooltip
           contentStyle={{
-            background: '#12121a',
+            backgroundColor: '#12121a',
             border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: 8,
-            color: '#f0f0f5',
             fontSize: 12,
+            color: '#e2e2ea',
           }}
-          formatter={(val, name) => [(val as number).toLocaleString(), name as string]}
+          labelStyle={{ color: '#f4f4f8' }}
+          itemStyle={{ color: '#e2e2ea' }}
+          formatter={(val, name) => [
+            (val as number).toLocaleString(),
+            name as string,
+          ]}
         />
         <Legend
           iconType='circle'

@@ -4,10 +4,7 @@ import { fetchEvents, parseDateRange, groupByDay } from '@/lib/dashboard-api';
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const { from, to } = parseDateRange(req.nextUrl.searchParams);
 
-  const [pageViewEvents, allEvents] = await Promise.all([
-    fetchEvents({ event_type: 'page_view', from, to }),
-    fetchEvents({ from, to }),
-  ]);
+  const pageViewEvents = await fetchEvents({ event_type: 'page_view', from, to });
 
   // Previous period for delta calculation
   const rangeDays = Math.ceil(
@@ -18,17 +15,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const prevFrom = new Date(prevTo);
   prevFrom.setDate(prevFrom.getDate() - rangeDays);
 
-  const [prevPageViews] = await Promise.all([
-    fetchEvents({
-      event_type: 'page_view',
-      from: prevFrom.toISOString().split('T')[0],
-      to: prevTo.toISOString().split('T')[0],
-    }),
-    fetchEvents({
-      from: prevFrom.toISOString().split('T')[0],
-      to: prevTo.toISOString().split('T')[0],
-    }),
-  ]);
+  const prevPageViews = await fetchEvents({
+    event_type: 'page_view',
+    from: prevFrom.toISOString().split('T')[0],
+    to: prevTo.toISOString().split('T')[0],
+  });
 
   // Metrics
   const pageViews = pageViewEvents.length;

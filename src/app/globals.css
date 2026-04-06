@@ -693,6 +693,29 @@ body::before {
 }
 
 /* ============================================
+   Recharts (dashboard) — readable tooltip copy on dark surfaces
+   Default payload row color is #000; merge with light contentStyle can leave
+   series name/value illegible. Scoped to chart wrapper only.
+   ============================================ */
+
+.recharts-wrapper .recharts-default-tooltip {
+  background-color: var(--bg-secondary) !important;
+  color: var(--fg-secondary);
+}
+
+.recharts-wrapper .recharts-tooltip-label {
+  color: var(--fg-primary) !important;
+}
+
+.recharts-wrapper .recharts-tooltip-item,
+.recharts-wrapper .recharts-tooltip-item-name,
+.recharts-wrapper .recharts-tooltip-item-value,
+.recharts-wrapper .recharts-tooltip-item-separator {
+  color: var(--fg-secondary) !important;
+  -webkit-text-fill-color: var(--fg-secondary) !important;
+}
+
+/* ============================================
    Divider with gradient
    ============================================ */
 

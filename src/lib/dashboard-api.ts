@@ -66,6 +66,7 @@ export async function fetchEvents(opts: FetchEventsOptions): Promise<SiteEvent[]
 
   const all: SiteEvent[] = [];
   let page = 1;
+  /** Total matching rows from Strapi (set from first response that includes meta). */
   let total = Infinity;
 
   while (all.length < total && all.length < 50_000) {
@@ -77,10 +78,29 @@ export async function fetchEvents(opts: FetchEventsOptions): Promise<SiteEvent[]
     if (!res.ok) break;
     const json = await res.json();
     const items: SiteEvent[] = json.data ?? [];
+    if (items.length === 0) break;
+
     all.push(...items);
-    total = json.meta?.pagination?.total ?? items.length;
-    if (items.length < pageSize) break;
-    page++;
+
+    const pag = json.meta?.pagination as
+      | { page: number; pageSize: number; pageCount: number; total: number }
+      | undefined;
+
+    if (pag?.total != null && Number.isFinite(pag.total)) {
+      total = pag.total;
+    }
+
+    if (all.length >= total) break;
+
+    // Strapi often caps pageSize below what we request (e.g. 100). Do not compare
+    // items.length to our requested pageSize — use API pagination metadata.
+    if (pag != null && Number.isFinite(pag.pageCount)) {
+      if (pag.page >= pag.pageCount) break;
+    } else if (items.length < pageSize) {
+      break;
+    }
+
+    page += 1;
   }
 
   return all;

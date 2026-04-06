@@ -18,21 +18,22 @@ interface BarChartHProps {
   maxItems?: number;
 }
 
-function TruncatedTick({ x, y, payload }: { x: number; y: number; payload: { value: string } }) {
+function TruncatedTick({
+  x,
+  y,
+  payload,
+}: {
+  x: number;
+  y: number;
+  payload: { value: string };
+}) {
   const maxLen = 22;
   const name = payload.value;
   const truncated = name.length > maxLen ? name.slice(0, maxLen) + '...' : name;
   return (
     <g transform={`translate(${x},${y})`}>
       <title>{name}</title>
-      <text
-        x={-4}
-        y={0}
-        dy={4}
-        textAnchor='end'
-        fill='#a0a0b8'
-        fontSize={11}
-      >
+      <text x={-4} y={0} dy={4} textAnchor='end' fill='#a0a0b8' fontSize={11}>
         {truncated}
       </text>
     </g>
@@ -55,7 +56,11 @@ export default function BarChartH({
         layout='vertical'
         margin={{ top: 0, right: 8, left: 8, bottom: 0 }}
       >
-        <CartesianGrid strokeDasharray='3 3' stroke='rgba(255,255,255,0.04)' horizontal={false} />
+        <CartesianGrid
+          strokeDasharray='3 3'
+          stroke='rgba(255,255,255,0.04)'
+          horizontal={false}
+        />
         <XAxis
           type='number'
           tick={{ fontSize: 11, fill: '#6b6b80' }}
@@ -73,22 +78,20 @@ export default function BarChartH({
         />
         <Tooltip
           contentStyle={{
-            background: '#12121a',
+            backgroundColor: '#12121a',
             border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: 8,
-            color: '#f0f0f5',
             fontSize: 12,
+            color: '#e2e2ea',
           }}
+          labelStyle={{ color: '#f4f4f8' }}
+          itemStyle={{ color: '#e2e2ea' }}
           cursor={{ fill: 'rgba(255,255,255,0.03)' }}
           formatter={(val) => [(val as number).toLocaleString(), label]}
         />
         <Bar dataKey='value' radius={[0, 4, 4, 0]} maxBarSize={22}>
           {sliced.map((_, i) => (
-            <Cell
-              key={i}
-              fill={color}
-              fillOpacity={1 - i * 0.06}
-            />
+            <Cell key={i} fill={color} fillOpacity={1 - i * 0.06} />
           ))}
         </Bar>
       </BarChart>

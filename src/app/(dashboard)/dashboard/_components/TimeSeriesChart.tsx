@@ -24,9 +24,18 @@ export default function TimeSeriesChart({
 }: TimeSeriesChartProps) {
   return (
     <ResponsiveContainer width='100%' height={260}>
-      <AreaChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+      <AreaChart
+        data={data}
+        margin={{ top: 4, right: 8, left: -16, bottom: 0 }}
+      >
         <defs>
-          <linearGradient id={`grad-${color.replace('#', '')}`} x1='0' y1='0' x2='0' y2='1'>
+          <linearGradient
+            id={`grad-${color.replace('#', '')}`}
+            x1='0'
+            y1='0'
+            x2='0'
+            y2='1'
+          >
             <stop offset='5%' stopColor={color} stopOpacity={0.3} />
             <stop offset='95%' stopColor={color} stopOpacity={0} />
           </linearGradient>
@@ -45,12 +54,14 @@ export default function TimeSeriesChart({
         />
         <Tooltip
           contentStyle={{
-            background: '#12121a',
+            backgroundColor: '#12121a',
             border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: 8,
-            color: '#f0f0f5',
             fontSize: 12,
+            color: '#e2e2ea',
           }}
+          labelStyle={{ color: '#f4f4f8' }}
+          itemStyle={{ color: '#e2e2ea' }}
           cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: '4 4' }}
           formatter={(val) => [(val as number).toLocaleString(), label]}
         />
