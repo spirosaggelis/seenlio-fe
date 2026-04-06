@@ -43,12 +43,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const bounced = [...sessionCounts.values()].filter((c) => c === 1).length;
   const bounceRate = sessions > 0 ? Math.round((bounced / sessions) * 100) : 0;
 
-  // Avg session duration (from events that have duration_ms)
-  const durations = allEvents.map((e) => e.duration_ms).filter((d): d is number => d !== null);
-  const avgDuration =
-    durations.length > 0
-      ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length / 1000)
-      : 0;
+  // Avg session duration — not tracked currently
+  const avgDuration = 0;
 
   // Deltas
   const prevPageViewsCount = prevPageViews.length;

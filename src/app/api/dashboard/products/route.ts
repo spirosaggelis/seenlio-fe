@@ -13,10 +13,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       populate: ['product'],
     }),
     fetchEvents({
-      event_type: 'product_click',
+      event_type: 'affiliate_click',
       from,
       to,
-      fields: ['event_type', 'createdAt'],
+      fields: ['event_type', 'affiliate_platform', 'createdAt'],
       populate: ['product'],
     }),
   ]);
@@ -42,17 +42,36 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const viewsByProduct = aggregateByProduct(viewEvents);
   const clicksByProduct = aggregateByProduct(clickEvents);
 
+  // Build platform lookup from click events
+  const platformByName = new Map<string, string>();
+  for (const e of clickEvents) {
+    const name = e.product?.name ?? 'unknown';
+    if (e.affiliate_platform && !platformByName.has(name)) {
+      platformByName.set(name, e.affiliate_platform);
+    }
+  }
+  // Also check view events for product platform (from product.sourcePlatform if populated)
+  for (const e of viewEvents) {
+    const name = e.product?.name;
+    if (name && !platformByName.has(name)) {
+      // Fallback: no platform info from views alone
+    }
+  }
+
   // CTR table: merge views + clicks per product
-  const allProducts = new Map<string, { name: string; views: number; clicks: number }>();
+  const allProducts = new Map<string, { name: string; views: number; clicks: number; platform: string }>();
   for (const p of viewsByProduct) {
-    allProducts.set(p.name, { name: p.name, views: p.count, clicks: 0 });
+    allProducts.set(p.name, { name: p.name, views: p.count, clicks: 0, platform: platformByName.get(p.name) ?? '—' });
   }
   for (const p of clicksByProduct) {
     const existing = allProducts.get(p.name);
     if (existing) {
       existing.clicks = p.count;
+      if (existing.platform === '—' && platformByName.has(p.name)) {
+        existing.platform = platformByName.get(p.name)!;
+      }
     } else {
-      allProducts.set(p.name, { name: p.name, views: 0, clicks: p.count });
+      allProducts.set(p.name, { name: p.name, views: 0, clicks: p.count, platform: platformByName.get(p.name) ?? '—' });
     }
   }
 

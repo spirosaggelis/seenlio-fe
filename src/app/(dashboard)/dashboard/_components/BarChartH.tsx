@@ -18,6 +18,27 @@ interface BarChartHProps {
   maxItems?: number;
 }
 
+function TruncatedTick({ x, y, payload }: { x: number; y: number; payload: { value: string } }) {
+  const maxLen = 22;
+  const name = payload.value;
+  const truncated = name.length > maxLen ? name.slice(0, maxLen) + '...' : name;
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <title>{name}</title>
+      <text
+        x={-4}
+        y={0}
+        dy={4}
+        textAnchor='end'
+        fill='#a0a0b8'
+        fontSize={11}
+      >
+        {truncated}
+      </text>
+    </g>
+  );
+}
+
 export default function BarChartH({
   data,
   color = '#8b5cf6',
@@ -32,7 +53,7 @@ export default function BarChartH({
       <BarChart
         data={sliced}
         layout='vertical'
-        margin={{ top: 0, right: 8, left: 0, bottom: 0 }}
+        margin={{ top: 0, right: 8, left: 8, bottom: 0 }}
       >
         <CartesianGrid strokeDasharray='3 3' stroke='rgba(255,255,255,0.04)' horizontal={false} />
         <XAxis
@@ -44,8 +65,9 @@ export default function BarChartH({
         <YAxis
           type='category'
           dataKey='name'
-          width={140}
-          tick={{ fontSize: 11, fill: '#a0a0b8' }}
+          width={160}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tick={TruncatedTick as any}
           tickLine={false}
           axisLine={false}
         />

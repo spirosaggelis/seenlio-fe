@@ -6,11 +6,34 @@ import DataTable from '../_components/DataTable';
 interface ProductsData {
   topViewed: Array<{ name: string; value: number }>;
   topClicked: Array<{ name: string; value: number }>;
-  ctrTable: Array<{ name: string; views: number; clicks: number; ctr: number }>;
+  ctrTable: Array<{ name: string; views: number; clicks: number; ctr: number; platform: string }>;
 }
+
+const platformColors: Record<string, string> = {
+  amazon: '#FF9900',
+  aliexpress: '#E43225',
+  temu: '#F26522',
+  tiktok_shop: '#00F2EA',
+};
 
 const ctrColumns = [
   { key: 'name' as const, label: 'Product' },
+  {
+    key: 'platform' as const,
+    label: 'Platform',
+    render: (v: unknown) => {
+      const p = String(v ?? '—');
+      const color = platformColors[p];
+      return (
+        <span
+          className='inline-block rounded-full px-2 py-0.5 text-xs font-medium'
+          style={color ? { background: `${color}20`, color } : undefined}
+        >
+          {p}
+        </span>
+      );
+    },
+  },
   {
     key: 'views' as const,
     label: 'Views',

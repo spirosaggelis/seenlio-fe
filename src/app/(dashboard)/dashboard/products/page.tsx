@@ -6,7 +6,7 @@ import ProductsClient from './ProductsClient';
 interface ProductsData {
   topViewed: Array<{ name: string; value: number }>;
   topClicked: Array<{ name: string; value: number }>;
-  ctrTable: Array<{ name: string; views: number; clicks: number; ctr: number }>;
+  ctrTable: Array<{ name: string; views: number; clicks: number; ctr: number; platform: string }>;
 }
 
 async function fetchProducts(from: string, to: string): Promise<ProductsData> {

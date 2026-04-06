@@ -13,14 +13,13 @@ export interface SiteEvent {
   page: string | null;
   query: string | null;
   results_count: number | null;
-  filters_json: unknown;
+  click_source: string | null;
   ip_hash: string | null;
   country: string | null;
   device_type: string | null;
   referrer: string | null;
   referrer_source: string | null;
   affiliate_platform: string | null;
-  duration_ms: number | null;
   createdAt: string;
   product: { id: number; name: string; slug: string; productCode: string } | null;
 }
@@ -40,7 +39,7 @@ export async function fetchEvents(opts: FetchEventsOptions): Promise<SiteEvent[]
     event_type,
     from,
     to,
-    fields = ['event_type', 'session_id', 'page', 'ip_hash', 'country', 'device_type', 'referrer_source', 'affiliate_platform', 'duration_ms', 'query', 'results_count', 'createdAt'],
+    fields = ['event_type', 'session_id', 'page', 'ip_hash', 'country', 'device_type', 'referrer_source', 'affiliate_platform', 'click_source', 'query', 'results_count', 'createdAt'],
     populate = [],
     pageSize = 5000,
   } = opts;
