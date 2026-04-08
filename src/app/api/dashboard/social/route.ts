@@ -136,10 +136,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   // Pivot rows: one row per (publishRecordId), all metrics as columns
   const METRICS = ['views', 'likes', 'shares', 'comments'] as const;
-  const pivotByRecord = new Map<
-    number,
-    { product: string; platform: string; channel: string; published: string } & Record<string, number>
-  >();
+  const pivotByRecord = new Map<number, PivotRow>();
 
   for (const e of latest) {
     if (!e.publishRecord?.id || e.country) continue;
@@ -157,8 +154,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       });
     }
     const row = pivotByRecord.get(recId)!;
-    if (METRICS.includes(e.metricType as typeof METRICS[number])) {
-      row[e.metricType] = (row[e.metricType] ?? 0) + e.value;
+    const metric = e.metricType as typeof METRICS[number];
+    if (METRICS.includes(metric)) {
+      (row as unknown as Record<string, number>)[metric] = (row[metric] ?? 0) + e.value;
     }
   }
 

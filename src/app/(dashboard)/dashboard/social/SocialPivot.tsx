@@ -56,10 +56,12 @@ interface Props {
   rows: PivotRow[];
 }
 
+ 
 export default function SocialPivot({ rows }: Props) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'views', desc: true }]);
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: rows,
     columns: COLUMNS,
