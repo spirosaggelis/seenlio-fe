@@ -17,10 +17,21 @@ const GOOGLE_CLIENT_ID =
   process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 
+function getPublicOrigin(req: NextRequest): string {
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '');
+  if (fromEnv) return fromEnv;
+
+  const proto =
+    req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'http';
+  const host =
+    req.headers.get('x-forwarded-host')?.split(',')[0]?.trim() ||
+    req.headers.get('host') ||
+    'localhost:3000';
+  return `${proto}://${host}`;
+}
+
 function getRedirectUri(req: NextRequest) {
-  const proto = req.headers.get('x-forwarded-proto') || 'http';
-  const host = req.headers.get('host') || 'localhost:3000';
-  return `${proto}://${host}/api/auth/youtube/callback`;
+  return `${getPublicOrigin(req)}/api/auth/youtube/callback`;
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -29,7 +40,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const state = searchParams.get('state'); // platform account documentId
   const error = searchParams.get('error');
 
-  const dashboardUrl = new URL('/dashboard/channels', req.url);
+  const dashboardUrl = new URL(`${getPublicOrigin(req)}/dashboard/channels`);
 
   if (error) {
     dashboardUrl.searchParams.set('error', `Google auth failed: ${error}`);
