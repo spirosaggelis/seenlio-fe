@@ -13,12 +13,19 @@ interface AffiliateData {
   timeseries: Array<{ date: string; value: number }>;
 }
 
-async function fetchAffiliate(from: string, to: string): Promise<AffiliateData> {
+async function fetchAffiliate(
+  from: string,
+  to: string,
+): Promise<AffiliateData> {
   const base = getBaseUrl();
-  const res = await fetch(`${base}/api/dashboard/affiliate?from=${from}&to=${to}`, {
-    next: { revalidate: 300 },
-  });
-  if (!res.ok) return { total: 0, byPlatform: [], topProducts: [], timeseries: [] };
+  const res = await fetch(
+    `${base}/api/dashboard/affiliate?from=${from}&to=${to}`,
+    {
+      next: { revalidate: 300 },
+    },
+  );
+  if (!res.ok)
+    return { total: 0, byPlatform: [], topProducts: [], timeseries: [] };
   return res.json();
 }
 
@@ -30,7 +37,9 @@ export default async function AffiliatePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const to = params.to ?? new Date().toISOString().split('T')[0];
   const now = new Date();
-  const from = params.from ?? new Date(now.getTime() - 30 * 86_400_000).toISOString().split('T')[0];
+  const from =
+    params.from ??
+    new Date(now.getTime() - 30 * 86_400_000).toISOString().split('T')[0];
 
   const data = await fetchAffiliate(from, to);
 
@@ -38,8 +47,12 @@ export default async function AffiliatePage({ searchParams }: PageProps) {
     <div className='space-y-8'>
       <div className='flex items-center justify-between flex-wrap gap-4'>
         <div>
-          <h1 className='text-2xl font-bold text-[var(--fg-primary)]'>Affiliate</h1>
-          <p className='text-sm text-[var(--fg-muted)] mt-1'>Affiliate link clicks and conversions</p>
+          <h1 className='text-2xl font-bold text-[var(--fg-primary)]'>
+            Affiliate
+          </h1>
+          <p className='text-sm text-[var(--fg-muted)] mt-1'>
+            Affiliate link clicks and conversions
+          </p>
         </div>
         <Suspense>
           <DateRangePicker />
@@ -48,9 +61,21 @@ export default async function AffiliatePage({ searchParams }: PageProps) {
 
       {/* KPI */}
       <div className='grid grid-cols-2 lg:grid-cols-3 gap-4'>
-        <KpiCard label='Total Clicks' value={data.total.toLocaleString()} accent='pink' />
-        <KpiCard label='Platforms' value={data.byPlatform.length} accent='purple' />
-        <KpiCard label='Products w/ Clicks' value={data.topProducts.length} accent='cyan' />
+        <KpiCard
+          label='Total Clicks'
+          value={data.total.toLocaleString()}
+          accent='pink'
+        />
+        <KpiCard
+          label='Platforms'
+          value={data.byPlatform.length}
+          accent='purple'
+        />
+        <KpiCard
+          label='Products w/ Clicks'
+          value={data.topProducts.length}
+          accent='cyan'
+        />
       </div>
 
       {/* Clicks over time */}
@@ -58,7 +83,11 @@ export default async function AffiliatePage({ searchParams }: PageProps) {
         <h2 className='text-sm font-semibold text-[var(--fg-secondary)] uppercase tracking-wider mb-4'>
           Affiliate Clicks Over Time
         </h2>
-        <TimeSeriesChart data={data.timeseries} label='Clicks' color='#ec4899' />
+        <TimeSeriesChart
+          data={data.timeseries}
+          label='Clicks'
+          color='#ec4899'
+        />
       </div>
 
       {/* Platform split + top products */}
