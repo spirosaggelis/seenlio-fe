@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { ConsentProvider } from '@/providers/ConsentProvider';
 import CookieConsent from '@/components/CookieConsent';
-import GtmScript, { GtmNoscript } from '@/components/GtmScript';
+import GtmScript from '@/components/GtmScript';
+import GtmNoscript from '@/components/GtmNoscript';
 import AnalyticsConsole from '@/components/AnalyticsConsole';
 import './globals.css';
 
