@@ -171,14 +171,17 @@ export async function lookupProduct(code: string) {
 }
 
 export async function getTrendingProducts() {
-  const res = await fetch(`${STRAPI_URL}/api/products/trending`, {
-    headers: STRAPI_API_TOKEN ? { Authorization: `Bearer ${STRAPI_API_TOKEN}` } : {},
-    next: { revalidate: 300 },
+  const res = await fetchStrapi<unknown[]>('/products', {
+    filters: { ...PUBLISHED_PRODUCT_FILTER },
+    sort: ['trendScore:desc'],
+    pagination: { pageSize: 24 },
+    populate: ['categories', 'media', 'pricePoints', 'featuredImage'],
   });
 
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data?.data || [];
+  if (Array.isArray(res.data)) {
+    return stripInactiveCategories(res.data);
+  }
+  return [];
 }
 
 export async function getSettings() {

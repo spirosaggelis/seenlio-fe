@@ -34,6 +34,7 @@ interface Product {
   name: string;
   slug: string;
   productCode: string;
+  sourcePlatform?: string;
   shortDescription?: string;
   trendScore?: number;
   rating?: number;
@@ -121,6 +122,7 @@ export default async function ProductsPage() {
                   name={product.name}
                   slug={product.slug}
                   productCode={product.productCode}
+                  sourcePlatform={product.sourcePlatform}
                   shortDescription={product.shortDescription}
                   imageUrl={primaryImage?.url}
                   pricePoints={product.pricePoints}
