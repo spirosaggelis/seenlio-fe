@@ -288,7 +288,6 @@ export async function GET(
   ]);
 
   if (!product) {
-    // Product not found — redirect to search page
     return NextResponse.redirect(
       new URL(`/products?search=${encodeURIComponent(productCode)}`, request.url),
       { status: 302 },
@@ -304,12 +303,60 @@ export async function GET(
     .trim()
     .toUpperCase();
 
-  // Build the final store URL with affiliate params
   const destinationUrl = buildStoreUrl(product, patterns, country);
 
-  // Track after response is sent — guaranteed to complete even in serverless
+  // Track server-side (Strapi site-events) after response
   after(() => trackClick(request, product, destinationUrl));
 
-  // Redirect to store
-  return NextResponse.redirect(destinationUrl, { status: 302 });
+  // Serve a minimal HTML page so the browser runs JS and fires GTM/dataLayer.
+  // meta-refresh is the fallback for no-JS environments.
+  // The page is invisible and redirects in <100 ms.
+  const platform = product.sourcePlatform || "amazon";
+  const dest = destinationUrl.replace(/'/g, "\\'");
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="0;url=${destinationUrl}">
+<title>Redirecting…</title>
+<script>
+(function(){
+  var dl = window.dataLayer = window.dataLayer || [];
+  dl.push({
+    event: 'affiliate_click',
+    product_code: '${productCode}',
+    platform: '${platform}',
+    click_source: 'short_url',
+    destination_url: '${dest}'
+  });
+  // Also hit /api/analytics so Strapi records it client-side
+  try {
+    var body = JSON.stringify([{
+      event_type: 'affiliate_click',
+      product_code: '${productCode}',
+      affiliate_platform: '${platform}',
+      click_source: 'short_url',
+      page: '/go/${productCode}',
+      metadata: { url: '${dest}' }
+    }]);
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/api/analytics', new Blob([body], {type:'application/json'}));
+    } else {
+      fetch('/api/analytics', {method:'POST', headers:{'Content-Type':'application/json'}, body: body, keepalive: true});
+    }
+  } catch(e){}
+  window.location.replace('${dest}');
+})();
+</script>
+</head>
+<body></body>
+</html>`;
+
+  return new NextResponse(html, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
 }
