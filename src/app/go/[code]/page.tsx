@@ -219,10 +219,12 @@ async function trackClickInStrapi(
 
 export default async function GoPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ code: string }>;
+  searchParams: Promise<Record<string, string>>;
 }) {
-  const { code } = await params;
+  const [{ code }, sp] = await Promise.all([params, searchParams]);
   const productCode = code.toUpperCase();
 
   const reqHeaders = await headers();
@@ -237,6 +239,7 @@ export default async function GoPage({
   }
 
   const country = (
+    sp['country'] ||
     reqHeaders.get('x-vercel-ip-country') ||
     reqHeaders.get('cf-ipcountry') ||
     'US'
