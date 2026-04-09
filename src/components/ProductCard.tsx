@@ -49,11 +49,11 @@ export default function ProductCard({
 
   return (
     <div className='group relative flex flex-col rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:border-purple-500/40 hover:shadow-[0_0_30px_-5px_rgba(139,92,246,0.3)]'>
-      {/* Stretched link covers entire card (below CTA button) */}
-      <Link href={`/products/${slug}`} className='absolute inset-0 z-0' aria-label={name} />
+      {/* Stretched link covers entire card — z-[1], CTA button sits at z-[2] above it */}
+      <Link href={`/products/${slug}`} className='absolute inset-0 z-1' aria-label={name} />
 
       {/* Image */}
-      <div className='relative z-10 overflow-hidden bg-linear-to-br from-purple-900/20 via-gray-900 to-cyan-900/20' style={{ paddingBottom: '75%' }}>
+      <div className='overflow-hidden bg-linear-to-br from-purple-900/20 via-gray-900 to-cyan-900/20' style={{ paddingBottom: '75%', position: 'relative' }}>
         {imageUrl ? (
           <Image
             src={imageUrl}
@@ -85,7 +85,7 @@ export default function ProductCard({
       </div>
 
       {/* Content */}
-      <div className='relative z-10 flex flex-col flex-1 p-4 gap-2'>
+      <div className='flex flex-col flex-1 p-4 gap-2'>
         {/* Name */}
         <h3 className='font-bold text-white line-clamp-2 leading-snug group-hover:text-purple-200 transition-colors'>
           {name}
@@ -132,8 +132,10 @@ export default function ProductCard({
           </span>
         </div>
 
-        {/* CTA */}
-        <ListingCtaButton productCode={productCode} platform={sourcePlatform || 'amazon'} />
+        {/* CTA — z-2 so it sits above the stretched card link */}
+        <div className='relative z-2'>
+          <ListingCtaButton productCode={productCode} platform={sourcePlatform || 'amazon'} />
+        </div>
       </div>
     </div>
   );
