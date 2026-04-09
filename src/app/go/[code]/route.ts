@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 
@@ -247,6 +248,7 @@ async function trackClick(
     device_type: detectDevice(ua),
     referrer: referrer || null,
     referrer_source: classifyReferrer(referrer),
+    click_source: "short_url",
     affiliate_platform: product.sourcePlatform || null,
     product: product.id,
     metadata: {
@@ -305,8 +307,8 @@ export async function GET(
   // Build the final store URL with affiliate params
   const destinationUrl = buildStoreUrl(product, patterns, country);
 
-  // Track the click (fire-and-forget — don't delay redirect)
-  void trackClick(request, product, destinationUrl);
+  // Track after response is sent — guaranteed to complete even in serverless
+  after(() => trackClick(request, product, destinationUrl));
 
   // Redirect to store
   return NextResponse.redirect(destinationUrl, { status: 302 });

@@ -8,11 +8,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     event_type: 'affiliate_click',
     from,
     to,
-    fields: ['event_type', 'affiliate_platform', 'createdAt'],
+    fields: ['event_type', 'affiliate_platform', 'click_source', 'createdAt'],
     populate: ['product'],
   });
 
   const byPlatform = countBy(events, 'affiliate_platform');
+  const bySource = countBy(events, 'click_source');
 
   // Top converting products by affiliate clicks
   const productMap = new Map<string, number>();
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json({
     total: events.length,
     byPlatform,
+    bySource,
     topProducts,
     timeseries,
   });

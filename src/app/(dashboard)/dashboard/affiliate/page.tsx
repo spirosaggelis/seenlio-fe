@@ -9,6 +9,7 @@ import { getBaseUrl } from '@/lib/dashboard-api';
 interface AffiliateData {
   total: number;
   byPlatform: Array<{ name: string; value: number }>;
+  bySource: Array<{ name: string; value: number }>;
   topProducts: Array<{ name: string; value: number }>;
   timeseries: Array<{ date: string; value: number }>;
 }
@@ -25,7 +26,7 @@ async function fetchAffiliate(
     },
   );
   if (!res.ok)
-    return { total: 0, byPlatform: [], topProducts: [], timeseries: [] };
+    return { total: 0, byPlatform: [], bySource: [], topProducts: [], timeseries: [] };
   return res.json();
 }
 
@@ -90,7 +91,7 @@ export default async function AffiliatePage({ searchParams }: PageProps) {
         />
       </div>
 
-      {/* Platform split + top products */}
+      {/* Platform split + click source */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
         <div className='bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-6'>
           <h2 className='text-sm font-semibold text-[var(--fg-secondary)] uppercase tracking-wider mb-4'>
@@ -103,10 +104,21 @@ export default async function AffiliatePage({ searchParams }: PageProps) {
         </div>
         <div className='bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-6'>
           <h2 className='text-sm font-semibold text-[var(--fg-secondary)] uppercase tracking-wider mb-4'>
-            Top Products by Affiliate Clicks
+            Clicks by Source
           </h2>
-          <BarChartH data={data.topProducts} color='#ec4899' label='Clicks' />
+          <DonutChart
+            data={data.bySource}
+            colors={['#8b5cf6', '#ec4899', '#06b6d4', '#10b981', '#f59e0b']}
+          />
         </div>
+      </div>
+
+      {/* Top products */}
+      <div className='bg-(--bg-secondary) border border-(--border-subtle) rounded-md p-6'>
+        <h2 className='text-sm font-semibold text-(--fg-secondary) uppercase tracking-wider mb-4'>
+          Top Products by Affiliate Clicks
+        </h2>
+        <BarChartH data={data.topProducts} color='#ec4899' label='Clicks' />
       </div>
     </div>
   );
