@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPageLayout title='Terms & Conditions' lastUpdated='21 March 2026'>
+    <LegalPageLayout title='Terms & Conditions' lastUpdated='10 April 2026'>
       <section>
         <h2>1. Acceptance of Terms</h2>
         <p>
