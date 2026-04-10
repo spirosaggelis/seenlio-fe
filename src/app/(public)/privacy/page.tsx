@@ -9,26 +9,27 @@ export const metadata: Metadata = {
   alternates: { canonical: '/privacy' },
   openGraph: {
     title: 'Privacy Policy',
-    description: 'Learn how Seenlio collects, uses, and protects your personal information.',
+    description:
+      'Learn how Seenlio collects, uses, and protects your personal information.',
     url: '/privacy',
   },
 };
 
 export default function PrivacyPage() {
   return (
-    <LegalPageLayout title='Privacy Policy' lastUpdated='21 March 2026'>
+    <LegalPageLayout title='Privacy Policy' lastUpdated='10 April 2026'>
       <section>
         <h2>1. Introduction</h2>
         <p>
           Seenlio (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) operates
-          the website{' '}
-          <Link href='https://seenlio.com'>seenlio.com</Link> (the
-          &quot;Service&quot;). This Privacy Policy explains how we collect, use,
-          disclose, and safeguard your information when you visit our website.
+          the website <Link href='https://seenlio.com'>seenlio.com</Link>
+          &nbsp;and the Seenlio application (&quot;App&quot;). This Privacy
+          Policy explains how we collect, use, disclose, and safeguard your
+          information when you use our website and application.
         </p>
         <p>
-          By using the Service, you agree to the collection and use of
-          information in accordance with this policy.
+          By using the website or application, you agree to the collection and
+          use of information in accordance with this policy.
         </p>
       </section>
 
@@ -72,7 +73,10 @@ export default function PrivacyPage() {
         <p>We use the collected information to:</p>
         <ul>
           <li>Improve and optimise our product recommendations and content.</li>
-          <li>Analyse traffic patterns and user behaviour to enhance the user experience.</li>
+          <li>
+            Analyse traffic patterns and user behaviour to enhance the user
+            experience.
+          </li>
           <li>Measure the effectiveness of affiliate partnerships.</li>
           <li>Monitor and prevent abuse of the Service.</li>
           <li>Generate aggregated, anonymised statistics about site usage.</li>
@@ -112,8 +116,12 @@ export default function PrivacyPage() {
             privacy policies that govern data collected on their sites.
           </li>
         </ul>
+        <p>We do not sell your personal data to any third party.</p>
         <p>
-          We do not sell your personal data to any third party.
+          Seenlio may also use third-party APIs, including TikTok, to publish
+          and manage content on behalf of users, based on permissions granted by
+          the user. No personal data is shared with TikTok beyond what is
+          necessary to perform these actions.
         </p>
       </section>
 
@@ -177,8 +185,8 @@ export default function PrivacyPage() {
         <h2>8. International Data Transfers</h2>
         <p>
           Your information may be transferred to and processed in countries
-          other than your own. We ensure that appropriate safeguards are in place
-          to protect your data in accordance with this Privacy Policy and
+          other than your own. We ensure that appropriate safeguards are in
+          place to protect your data in accordance with this Privacy Policy and
           applicable data protection laws.
         </p>
       </section>
@@ -187,9 +195,9 @@ export default function PrivacyPage() {
         <h2>9. Children&apos;s Privacy</h2>
         <p>
           The Service is not directed to individuals under the age of 16. We do
-          not knowingly collect personal information from children. If you become
-          aware that a child has provided us with personal data, please contact
-          us so we can take steps to remove such information.
+          not knowingly collect personal information from children. If you
+          become aware that a child has provided us with personal data, please
+          contact us so we can take steps to remove such information.
         </p>
       </section>
 

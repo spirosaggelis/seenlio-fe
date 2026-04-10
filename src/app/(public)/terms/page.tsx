@@ -4,8 +4,7 @@ import LegalPageLayout from '@/components/LegalPageLayout';
 
 export const metadata: Metadata = {
   title: 'Terms & Conditions',
-  description:
-    'Read the terms and conditions governing your use of Seenlio.',
+  description: 'Read the terms and conditions governing your use of Seenlio.',
   alternates: { canonical: '/terms' },
   openGraph: {
     title: 'Terms & Conditions',
@@ -21,10 +20,10 @@ export default function TermsPage() {
         <h2>1. Acceptance of Terms</h2>
         <p>
           By accessing or using the Seenlio website at{' '}
-          <Link href='https://seenlio.com'>seenlio.com</Link> (the
-          &quot;Service&quot;), you agree to be bound by these Terms &amp;
-          Conditions. If you do not agree to these terms, you must not use the
-          Service.
+          <Link href='https://seenlio.com'>seenlio.com</Link>&nbsp;and the
+          Seenlio application (&quot;App&quot;), you agree to be bound by these
+          Terms & Conditions. If you do not agree to these terms, you must not
+          use the website or application.
         </p>
       </section>
 
@@ -39,6 +38,11 @@ export default function TermsPage() {
         <p>
           Seenlio does <strong>not</strong> sell products directly. We are a
           content and discovery service only.
+        </p>
+        <p>
+          Seenlio may also provide tools that allow users to publish and manage
+          content on third-party platforms (such as TikTok) through authorized
+          integrations.
         </p>
       </section>
 
@@ -124,8 +128,8 @@ export default function TermsPage() {
         <h2>6. Disclaimers</h2>
         <p>
           The Service is provided on an &quot;as is&quot; and &quot;as
-          available&quot; basis without warranties of any kind, either express or
-          implied.
+          available&quot; basis without warranties of any kind, either express
+          or implied.
         </p>
         <ul>
           <li>
@@ -191,9 +195,7 @@ export default function TermsPage() {
 
       <section>
         <h2>11. Contact Us</h2>
-        <p>
-          If you have questions about these Terms, please contact us at:
-        </p>
+        <p>If you have questions about these Terms, please contact us at:</p>
         <p>
           <strong>Email:</strong> legal@seenlio.com
         </p>
