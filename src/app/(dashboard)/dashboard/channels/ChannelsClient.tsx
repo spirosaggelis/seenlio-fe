@@ -274,7 +274,10 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
         `?client_id=${encodeURIComponent(clientId)}` +
         `&redirect_uri=${encodeURIComponent(redirectUri)}` +
         `&response_type=code` +
-        `&scope=${encodeURIComponent('https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/youtube.upload')}` +
+        // Must match publisher `youtube.py` scopes; commentThreads.insert needs youtube.force-ssl.
+        `&scope=${encodeURIComponent(
+          'https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.force-ssl',
+        )}` +
         `&access_type=offline` +
         `&prompt=consent` +
         `&state=${account.id}`;
