@@ -54,6 +54,11 @@ function isTokenExpired(account: PlatformAccount): boolean {
   return new Date(account.tokenExpiresAt) < new Date();
 }
 
+interface PinterestBoard {
+  id: string;
+  name: string;
+}
+
 export default function ChannelsClient({ initialChannels, categories }: Props) {
   const [channels, setChannels] = useState(initialChannels);
   const [saving, setSaving] = useState(false);
@@ -79,15 +84,37 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
     new Set(initialChannels.map((c) => c.id)),
   );
 
+  // Pinterest board selection modal
+  const [pinterestModal, setPinterestModal] = useState<{
+    accountId: string;
+    boards: PinterestBoard[];
+    selectedBoardId: string;
+    loading: boolean;
+    saving: boolean;
+  } | null>(null);
+
   const searchParams = useSearchParams();
 
-  // Show toast from OAuth redirect
+  // Show toast from OAuth redirect; trigger Pinterest board selection if needed
   useEffect(() => {
     const success = searchParams.get('success');
+    const accountId = searchParams.get('accountId');
     const error = searchParams.get('error');
     if (success) {
-      setToast({ type: 'success', message: success });
-      refreshChannels();
+      refreshChannels().then((refreshedChannels) => {
+        // Check if the connected account is Pinterest
+        if (accountId) {
+          const isPinterest = refreshedChannels
+            .flatMap((c) => c.platformAccounts)
+            .some((a) => a.id === accountId && a.platform === 'pinterest');
+
+          if (isPinterest) {
+            openPinterestBoardModal(accountId);
+            return;
+          }
+        }
+        setToast({ type: 'success', message: success });
+      });
     } else if (error) {
       setToast({ type: 'error', message: error });
     }
@@ -101,10 +128,70 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
     }
   }, [toast]);
 
-  async function refreshChannels() {
+  async function refreshChannels(): Promise<Channel[]> {
     const res = await fetch('/api/dashboard/channels');
     const data = await res.json();
-    setChannels(data.channels || []);
+    const refreshed: Channel[] = data.channels || [];
+    setChannels(refreshed);
+    return refreshed;
+  }
+
+  // ── Pinterest Board Selection ──
+
+  async function openPinterestBoardModal(accountId: string) {
+    setPinterestModal({ accountId, boards: [], selectedBoardId: '', loading: true, saving: false });
+    try {
+      const res = await fetch(`/api/dashboard/channels/pinterest-boards?accountId=${accountId}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setToast({ type: 'error', message: data.error || 'Failed to load Pinterest boards' });
+        setPinterestModal(null);
+        return;
+      }
+      const boards: PinterestBoard[] = data.boards || [];
+      setPinterestModal((prev) =>
+        prev ? { ...prev, boards, selectedBoardId: boards[0]?.id || '', loading: false } : null,
+      );
+    } catch (err) {
+      setToast({ type: 'error', message: String(err) });
+      setPinterestModal(null);
+    }
+  }
+
+  async function savePinterestBoard() {
+    if (!pinterestModal?.selectedBoardId) return;
+    setPinterestModal((prev) => (prev ? { ...prev, saving: true } : null));
+
+    try {
+      // Fetch current credentials so we can merge board_id in
+      const accountRes = await fetch(
+        `/api/dashboard/channels/pinterest-boards?accountId=${pinterestModal.accountId}`,
+      );
+      // We need the credentials from Strapi — fetch the account via the channels list we already have
+      const account = channels
+        .flatMap((c) => c.platformAccounts)
+        .find((a) => a.id === pinterestModal.accountId);
+
+      const updatedCredentials = {
+        ...(account?.credentials || {}),
+        board_id: pinterestModal.selectedBoardId,
+      };
+
+      await fetch('/api/dashboard/channels/accounts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: pinterestModal.accountId, credentials: updatedCredentials }),
+      });
+
+      await refreshChannels();
+      setPinterestModal(null);
+
+      const board = pinterestModal.boards.find((b) => b.id === pinterestModal.selectedBoardId);
+      setToast({ type: 'success', message: `Pinterest connected — board: ${board?.name || pinterestModal.selectedBoardId}` });
+    } catch (err) {
+      setToast({ type: 'error', message: String(err) });
+      setPinterestModal((prev) => (prev ? { ...prev, saving: false } : null));
+    }
   }
 
   // ── Channel CRUD ──
@@ -340,6 +427,65 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
           ].join(' ')}
         >
           {toast.message}
+        </div>
+      )}
+
+      {/* Pinterest Board Selection Modal */}
+      {pinterestModal && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60'>
+          <div className='bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-6 w-full max-w-sm shadow-xl'>
+            <h3 className='text-sm font-semibold text-[var(--fg-primary)] mb-1'>
+              Select Pinterest Board
+            </h3>
+            <p className='text-xs text-[var(--fg-muted)] mb-4'>
+              Choose which board new pins will be posted to.
+            </p>
+
+            {pinterestModal.loading ? (
+              <p className='text-sm text-[var(--fg-muted)] py-4 text-center'>
+                Loading boards…
+              </p>
+            ) : pinterestModal.boards.length === 0 ? (
+              <p className='text-sm text-[var(--fg-muted)] py-4 text-center'>
+                No boards found. Create a board on Pinterest first.
+              </p>
+            ) : (
+              <select
+                value={pinterestModal.selectedBoardId}
+                onChange={(e) =>
+                  setPinterestModal((prev) =>
+                    prev ? { ...prev, selectedBoardId: e.target.value } : null,
+                  )
+                }
+                className='w-full bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm text-[var(--fg-primary)] px-3 py-2 mb-4'
+              >
+                {pinterestModal.boards.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <div className='flex gap-2 justify-end'>
+              <button
+                onClick={() => {
+                  setPinterestModal(null);
+                  setToast({ type: 'success', message: 'Pinterest connected (no board selected)' });
+                }}
+                className='px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] border border-[var(--border-subtle)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)]'
+              >
+                Skip
+              </button>
+              <button
+                onClick={savePinterestBoard}
+                disabled={pinterestModal.loading || pinterestModal.saving || !pinterestModal.selectedBoardId}
+                className='px-4 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 disabled:opacity-50'
+              >
+                {pinterestModal.saving ? 'Saving…' : 'Save Board'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
