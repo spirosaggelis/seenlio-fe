@@ -50,6 +50,14 @@ interface SiteEventPayload {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const BOT_UA_RE =
+  /bot|crawl|spider|slurp|mediapartners|google|bingpreview|facebookexternalhit|twitterbot|pinterest|whatsapp|applebot|yandex|baidu|duckduckbot|semrush|ahrefs|mj12bot|dotbot|curl|wget|python-requests|axios|java\/|go-http|okhttp|libwww|scrapy|headlesschrome/i;
+
+function isBot(ua: string): boolean {
+  if (!ua) return true;
+  return BOT_UA_RE.test(ua);
+}
+
 function hashIp(ip: string): string {
   const salt = process.env.IP_HASH_SALT || 'default-salt-change-me';
   return createHash('sha256').update(ip + salt).digest('hex').slice(0, 16);
@@ -132,6 +140,8 @@ async function writeSiteEvent(payload: Record<string, unknown>): Promise<void> {
 async function processEvent(event: SiteEventPayload, req: NextRequest): Promise<void> {
   const ip = getIp(req);
   const ua = req.headers.get('user-agent') || '';
+
+  if (isBot(ua)) return;
   const ipHash = hashIp(ip);
   const deviceType = detectDevice(ua);
   const referrer = event.referrer || req.headers.get('referer') || '';

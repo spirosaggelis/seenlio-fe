@@ -8,6 +8,14 @@ const DASHBOARD_AUTH_DISABLED =
   process.env.DASHBOARD_AUTH_DISABLED === 'true' ||
   process.env.DASHBOARD_AUTH_DISABLED === '1';
 
+const BOT_UA_RE =
+  /bot|crawl|spider|slurp|mediapartners|google|bingpreview|facebookexternalhit|twitterbot|pinterest|whatsapp|applebot|yandex|baidu|duckduckbot|semrush|ahrefs|mj12bot|dotbot|curl|wget|python-requests|axios|java\/|go-http|okhttp|libwww|scrapy|headlesschrome/i;
+
+function isBot(ua: string): boolean {
+  if (!ua) return true;
+  return BOT_UA_RE.test(ua);
+}
+
 // ─── Dashboard auth guard ─────────────────────────────────────────────────────
 
 async function isDashboardAuthed(req: NextRequest): Promise<boolean> {
@@ -51,6 +59,12 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml'
   ) {
+    return NextResponse.next();
+  }
+
+  // Skip bots and crawlers — they don't execute JS so GA never counts them either
+  const ua = req.headers.get('user-agent') ?? '';
+  if (isBot(ua)) {
     return NextResponse.next();
   }
 
