@@ -380,28 +380,20 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
         `&state=${account.id}`;
       window.location.href = authUrl;
     } else if (account.platform === 'instagram') {
-      // Manual credential entry for platforms without OAuth flow yet
-      const json = prompt(
-        `Paste credentials JSON for ${account.platform}:\n\n` +
-          '{"access_token": "...", "ig_user_id": "..."}',
-      );
-      if (!json) return;
-      try {
-        const credentials = JSON.parse(json);
-        fetch('/api/dashboard/channels/accounts', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: account.id, credentials }),
-        }).then(() => {
-          refreshChannels();
-          setToast({
-            type: 'success',
-            message: `${account.platform} credentials saved`,
-          });
-        });
-      } catch {
-        setToast({ type: 'error', message: 'Invalid JSON' });
-      }
+      const appId =
+        process.env.NEXT_PUBLIC_FACEBOOK_APP_ID ||
+        prompt('Enter your Facebook App ID:');
+      if (!appId) return;
+
+      const redirectUri = `${currentUrl}/api/auth/instagram/callback`;
+      const authUrl =
+        `https://www.facebook.com/v21.0/dialog/oauth` +
+        `?client_id=${encodeURIComponent(appId)}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent('instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement')}` +
+        `&state=${encodeURIComponent(account.id)}`;
+      window.location.href = authUrl;
     }
   }
 
