@@ -114,10 +114,10 @@ export default function LogsClient({ initialLogs, initialPagination }: Props) {
               <tr className='text-xs text-[var(--fg-muted)] uppercase tracking-wider border-b border-[var(--border-subtle)]'>
                 <th className='text-left px-5 py-3'>Time</th>
                 <th className='text-left px-5 py-3'>Level</th>
+                <th className='text-left px-5 py-3'>Service</th>
                 <th className='text-left px-5 py-3'>Event</th>
                 <th className='text-left px-5 py-3'>Message</th>
                 <th className='text-left px-5 py-3'>Category</th>
-                <th className='text-left px-5 py-3'>Source</th>
               </tr>
             </thead>
             <tbody>
@@ -142,6 +142,9 @@ export default function LogsClient({ initialLogs, initialPagination }: Props) {
                         {log.level || 'info'}
                       </span>
                     </td>
+                    <td className='px-5 py-3 text-[var(--fg-muted)] text-xs'>
+                      {log.service || '-'}
+                    </td>
                     <td className='px-5 py-3 text-[var(--fg-secondary)] font-mono text-xs'>
                       {log.event}
                     </td>
@@ -150,15 +153,6 @@ export default function LogsClient({ initialLogs, initialPagination }: Props) {
                     </td>
                     <td className='px-5 py-3 text-[var(--fg-muted)]'>
                       {log.category || '-'}
-                    </td>
-                    <td className='px-5 py-3'>
-                      {log.source ? (
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                          log.source === 'amazon' ? 'bg-orange-500/20 text-orange-300' : 'bg-red-500/20 text-red-300'
-                        }`}>
-                          {log.source}
-                        </span>
-                      ) : '-'}
                     </td>
                   </tr>
 
