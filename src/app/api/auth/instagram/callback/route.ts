@@ -69,10 +69,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   try {
     // Step 1: Exchange code for short-lived user access token
-    const tokenRes = await fetch(`${GRAPH_BASE}/oauth/access_token`, {
-      method: 'GET',
-      headers: {},
-    });
     const tokenUrl = new URL(`${GRAPH_BASE}/oauth/access_token`);
     tokenUrl.searchParams.set('client_id', FB_APP_ID);
     tokenUrl.searchParams.set('client_secret', FB_APP_SECRET);

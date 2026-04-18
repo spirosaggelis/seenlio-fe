@@ -163,11 +163,6 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
     setPinterestModal((prev) => (prev ? { ...prev, saving: true } : null));
 
     try {
-      // Fetch current credentials so we can merge board_id in
-      const accountRes = await fetch(
-        `/api/dashboard/channels/pinterest-boards?accountId=${pinterestModal.accountId}`,
-      );
-      // We need the credentials from Strapi — fetch the account via the channels list we already have
       const account = channels
         .flatMap((c) => c.platformAccounts)
         .find((a) => a.id === pinterestModal.accountId);
@@ -707,6 +702,15 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                             : 'Reconnect'
                           : 'Connect'}
                       </button>
+
+                      {account.platform === 'pinterest' && connected && !expired && (
+                        <button
+                          onClick={() => openPinterestBoardModal(account.id)}
+                          className='px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] border border-orange-500/40 text-orange-300 hover:bg-orange-500/10 transition-all'
+                        >
+                          {account.credentials?.board_id ? 'Change Board' : 'Select Board'}
+                        </button>
+                      )}
 
                       {/* Active toggle */}
                       <button

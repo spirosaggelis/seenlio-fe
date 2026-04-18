@@ -30,7 +30,7 @@ function buildQuery(options: FetchOptions = {}): string {
     } else if (Array.isArray(options.populate)) {
       options.populate.forEach((p, i) => params.set(`populate[${i}]`, p));
     } else {
-      params.set('populate', JSON.stringify(options.populate));
+      flattenObject(options.populate as Record<string, unknown>, 'populate', params);
     }
   }
 
@@ -143,7 +143,17 @@ export async function getProducts(options: FetchOptions = {}) {
 export async function getProduct(slug: string) {
   const res = await fetchStrapi<unknown[]>('/products', {
     filters: { slug: { $eq: slug }, ...PUBLISHED_PRODUCT_FILTER },
-    populate: ['categories', 'affiliateLinks', 'media', 'pricePoints', 'seo', 'featuredImage', 'videos'],
+    populate: {
+      categories: true,
+      affiliateLinks: true,
+      media: true,
+      pricePoints: true,
+      seo: true,
+      featuredImage: true,
+      videos: {
+        populate: { publishRecords: true },
+      },
+    },
   });
 
   const product = res.data?.[0] as Record<string, unknown> | undefined;
@@ -197,6 +207,16 @@ export async function getCategories(options: FetchOptions = {}) {
     filters: { isActive: { $eq: true } },
     sort: 'sortOrder:asc',
     ...options,
+  });
+}
+
+export async function getChannels() {
+  return fetchStrapi<unknown[]>('/channels', {
+    populate: {
+      category: true,
+      platformAccounts: true,
+    },
+    filters: { isActive: { $eq: true } },
   });
 }
 

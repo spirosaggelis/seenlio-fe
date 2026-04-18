@@ -6,6 +6,7 @@ import TrendBadge from "@/components/TrendBadge";
 import PriceDisplay from "@/components/PriceDisplay";
 import StarRating from "@/components/StarRating";
 import ProductCard from "@/components/ProductCard";
+import PlatformBadge from "@/components/PlatformBadge";
 import ProductImageGallery from "@/components/ProductImageGallery";
 import SectionHeader from "@/components/SectionHeader";
 import ProductViewTracker from "./ProductViewTracker";
@@ -41,6 +42,24 @@ interface Category {
   isActive?: boolean;
 }
 
+interface PublishRecord {
+  platform: string;
+  publishStatus?: string;
+  externalUrl?: string;
+  externalId?: string;
+  publishedAt?: string;
+}
+
+interface VideoItem {
+  id: number;
+  title?: string;
+  storageUrl?: string;
+  thumbnailUrl?: string;
+  aspectRatio?: string;
+  createdAt?: string;
+  publishRecords?: PublishRecord[];
+}
+
 interface ProductData {
   id: number;
   name: string;
@@ -56,11 +75,62 @@ interface ProductData {
   affiliateLinks?: AffiliateLink[];
   pricePoints?: PricePoint[];
   media?: MediaItem[];
+  videos?: VideoItem[];
   categories?: Category[];
   seo?: {
     metaTitle?: string;
     metaDescription?: string;
   };
+}
+
+function extractYoutubeId(url: string): string | null {
+  const patterns = [
+    /youtu\.be\/([A-Za-z0-9_-]{11})/,
+    /youtube\.com\/watch\?v=([A-Za-z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/,
+    /youtube\.com\/embed\/([A-Za-z0-9_-]{11})/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+type PickedVideo =
+  | { kind: 'youtube'; id: string; title?: string }
+  | { kind: 'native'; src: string; poster?: string; aspectRatio?: string; title?: string };
+
+function pickProductVideo(videos: VideoItem[] | undefined): PickedVideo | null {
+  if (!videos || videos.length === 0) return null;
+
+  const sorted = [...videos].sort((a, b) =>
+    (a.createdAt ?? '').localeCompare(b.createdAt ?? ''),
+  );
+
+  for (const v of sorted) {
+    const yt = v.publishRecords?.find(
+      (r) =>
+        r.platform === 'youtube' &&
+        (r.publishStatus === 'published' || !!r.externalUrl),
+    );
+    if (yt?.externalUrl) {
+      const id = extractYoutubeId(yt.externalUrl);
+      if (id) return { kind: 'youtube', id, title: v.title };
+    }
+  }
+
+  const first = sorted[0];
+  if (first?.storageUrl) {
+    return {
+      kind: 'native',
+      src: first.storageUrl,
+      poster: first.thumbnailUrl,
+      aspectRatio: first.aspectRatio,
+      title: first.title,
+    };
+  }
+  return null;
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -234,6 +304,7 @@ export default async function ProductPage({ params }: PageProps) {
   const affiliatePatterns: AffiliatePattern[] =
     (settings as Record<string, unknown>)?.affiliatePatterns as AffiliatePattern[] ?? [];
 
+  const productVideo = pickProductVideo(product.videos);
   const currentPrice = product.pricePoints?.[0];
   const primaryImage =
     product.media?.find((m) => m.isPrimary && m.type !== "video")?.url ||
@@ -404,6 +475,9 @@ export default async function ProductPage({ params }: PageProps) {
 
             {/* Badges row */}
             <div className="flex flex-wrap items-center gap-2">
+              {product.sourcePlatform && (
+                <PlatformBadge platform={product.sourcePlatform} size="md" />
+              )}
               <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 rounded-lg">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
@@ -445,15 +519,85 @@ export default async function ProductPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Description — full width below the grid */}
-        {product.description && (
-          <div className="mt-10 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 sm:p-8">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
-              About This Product
-            </h3>
-            <p className="text-gray-300 leading-relaxed whitespace-pre-line max-w-4xl">
-              {product.description}
-            </p>
+        {/* Description + video — combined section */}
+        {(product.description || productVideo) && (
+          <div className="mt-10 relative overflow-hidden rounded-3xl border border-white/10 bg-linear-to-br from-[#0f0a1f] via-[#0a0a14] to-[#0a1420]">
+            {/* decorative glow blobs */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -top-24 -left-24 w-72 h-72 rounded-full bg-purple-500/20 blur-3xl"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-cyan-500/20 blur-3xl"
+            />
+
+            <div className="relative grid gap-8 p-6 sm:p-10 md:grid-cols-[minmax(0,1fr)_auto] md:gap-12 md:items-center">
+              {/* text side */}
+              <div className="min-w-0">
+                {productVideo && (
+                  <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-pink-400/30 bg-pink-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-pink-200">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inset-0 animate-ping rounded-full bg-pink-400 opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-pink-400" />
+                    </span>
+                    {productVideo.kind === 'youtube' ? 'Shorts · On YouTube' : 'Our Video'}
+                  </div>
+                )}
+
+                {product.description && (
+                  <>
+                    <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 mb-3">
+                      About This Product
+                    </h3>
+                    <p className="text-gray-300 leading-relaxed whitespace-pre-line">
+                      {product.description}
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {/* phone frame side */}
+              {productVideo && (
+                <div className="relative mx-auto md:mx-0 w-[260px] sm:w-[280px] shrink-0">
+                  {/* outer glow */}
+                  <div
+                    aria-hidden
+                    className="absolute -inset-4 rounded-[2.5rem] bg-linear-to-br from-purple-500/30 via-pink-500/20 to-cyan-500/30 blur-2xl"
+                  />
+                  {/* phone bezel */}
+                  <div className="relative rounded-[2rem] border border-white/15 bg-[#0a0a0f] p-2 shadow-[0_20px_80px_-20px_rgba(139,92,246,0.5)]">
+                    {/* notch */}
+                    <div className="absolute left-1/2 -translate-x-1/2 top-2 z-10 h-5 w-20 rounded-b-2xl bg-black/80 border border-white/10 border-t-0" />
+                    {/* screen */}
+                    <div
+                      className="relative w-full overflow-hidden rounded-[1.5rem] bg-black"
+                      style={{ aspectRatio: '9 / 16' }}
+                    >
+                      {productVideo.kind === 'youtube' ? (
+                        <iframe
+                          className="absolute inset-0 w-full h-full"
+                          src={`https://www.youtube.com/embed/${productVideo.id}?rel=0&modestbranding=1`}
+                          title={productVideo.title || product.name}
+                          loading="lazy"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        />
+                      ) : (
+                        <video
+                          className="absolute inset-0 w-full h-full object-cover"
+                          src={productVideo.src}
+                          poster={productVideo.poster}
+                          controls
+                          playsInline
+                          preload="metadata"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

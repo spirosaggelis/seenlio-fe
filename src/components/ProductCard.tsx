@@ -4,6 +4,7 @@ import TrendBadge from './TrendBadge';
 import PriceDisplay from './PriceDisplay';
 import StarRating from './StarRating';
 import ListingCtaButton from './ListingCtaButton';
+import PlatformBadge from './PlatformBadge';
 
 interface PricePoint {
   price: number;
@@ -80,6 +81,13 @@ export default function ProductCard({
         {trendScore !== undefined && trendScore > 0 && (
           <div className='absolute top-3 right-3'>
             <TrendBadge score={trendScore} size='sm' />
+          </div>
+        )}
+
+        {/* Source platform */}
+        {sourcePlatform && (
+          <div className='absolute top-3 left-3'>
+            <PlatformBadge platform={sourcePlatform} />
           </div>
         )}
       </div>

@@ -63,7 +63,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const token = await new SignJWT({ role: 'dashboard' })
       .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('24h')
+      .setExpirationTime('90d')
       .setIssuedAt()
       .sign(new TextEncoder().encode(JWT_SECRET));
 
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       // Lax: session must survive top-level return from OAuth providers (e.g. Pinterest).
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24, // 24 hours
+      maxAge: 60 * 60 * 24 * 90, // ~3 months
       path: '/',
     });
     return res;

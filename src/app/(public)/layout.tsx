@@ -3,6 +3,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import ScrollToTop from '@/components/ScrollToTop';
 import MobileMenu from '@/components/MobileMenu';
+import ChannelMatrix from '@/components/ChannelMatrix';
+import LivePulse from '@/components/LivePulse';
 
 export const metadata: Metadata = {
   title: {
@@ -77,19 +79,19 @@ function NavBar() {
 
 function Footer() {
   return (
-    <footer className='mt-24 relative'>
+    <footer className='relative'>
       <div className='h-px bg-gradient-to-r from-transparent via-[var(--accent-purple)] to-transparent opacity-40' />
 
       <div className='mx-auto max-w-7xl px-6 py-16'>
-        <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12'>
-          <div>
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12'>
+          <div className='lg:col-span-2 max-w-md'>
             <Link href='/' className='flex items-center mb-4'>
               <Image
                 src='/logo.png'
                 alt='Seenlio'
                 width={100}
-                height={30}
-                className='h-8 w-auto'
+                height={60}
+                className='h-14 w-auto'
               />
             </Link>
             <p className='text-sm text-[var(--fg-muted)] leading-relaxed'>
@@ -122,23 +124,6 @@ function Footer() {
 
           <div>
             <h4 className='text-sm font-semibold text-[var(--fg-primary)] mb-4 uppercase tracking-wider'>
-              Connect
-            </h4>
-            <ul className='space-y-3'>
-              {['Twitter / X', 'Instagram', 'TikTok', 'YouTube'].map(
-                (platform) => (
-                  <li key={platform}>
-                    <span className='text-sm text-[var(--fg-muted)] hover:text-[var(--fg-primary)] transition-colors cursor-pointer'>
-                      {platform}
-                    </span>
-                  </li>
-                ),
-              )}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className='text-sm font-semibold text-[var(--fg-primary)] mb-4 uppercase tracking-wider'>
               Legal
             </h4>
             <ul className='space-y-3'>
@@ -159,6 +144,10 @@ function Footer() {
             </ul>
           </div>
         </div>
+
+        <LivePulse />
+
+        <ChannelMatrix />
 
         <div className='mt-16 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4'>
           <div className='h-px flex-1 bg-gradient-to-r from-transparent via-[var(--border-subtle)] to-transparent hidden sm:block' />
