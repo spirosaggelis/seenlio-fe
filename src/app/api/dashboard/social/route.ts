@@ -28,8 +28,8 @@ async function fetchAllEvents(from: string, to: string): Promise<AnalyticsEvent[
       'populate[0]': 'publishRecord',
       'populate[1]': 'publishRecord.platformAccount',
       'populate[2]': 'product',
-      'filters[recordedAt][$gte]': `${from}T00:00:00.000Z`,
-      'filters[recordedAt][$lte]': `${to}T23:59:59.999Z`,
+      'filters[publishRecord][publishedAt][$gte]': `${from}T00:00:00.000Z`,
+      'filters[publishRecord][publishedAt][$lte]': `${to}T23:59:59.999Z`,
       'pagination[pageSize]': '500',
       'pagination[page]': String(page),
       'sort': 'recordedAt:desc',
@@ -102,11 +102,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
 
-  // Daily timeseries
+  // Daily timeseries — bucketed by publish date (latest snapshot per record)
   const dateEventMap = new Map<string, Map<string, number>>();
-  for (const e of events) {
+  for (const e of latest) {
     if (e.metricType === 'views' && !e.country) {
-      const day = e.recordedAt.split('T')[0];
+      const publishedAt = e.publishRecord?.publishedAt;
+      if (!publishedAt) continue;
+      const day = publishedAt.split('T')[0];
       if (!dateEventMap.has(day)) dateEventMap.set(day, new Map());
       const dayMap = dateEventMap.get(day)!;
       const key = String(e.publishRecord?.id ?? e.id);
