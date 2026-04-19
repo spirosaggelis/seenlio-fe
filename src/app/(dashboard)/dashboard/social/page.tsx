@@ -90,7 +90,7 @@ export default async function SocialPage({ searchParams }: PageProps) {
             Product × Platform × Channel
           </h2>
           <p className='text-xs text-[var(--fg-muted)] mt-1'>
-            Drag columns to the row group panel to change grouping. Click headers to sort. Expand/collapse rows with the arrows.
+            Toggle grouping with the chips. Click headers to sort. Expand/collapse rows with the arrows.
           </p>
         </div>
         <SocialPivot rows={data.pivotRows} />
