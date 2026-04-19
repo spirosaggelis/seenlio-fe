@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
+import { isAnalyticsDisabled } from '@/utils/analyticsDisable';
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 
@@ -17,6 +18,7 @@ export default function GtmScript() {
   useEffect(() => {
     if (!GTM_ID) return;
     if (pathname.startsWith('/dashboard')) return;
+    if (isAnalyticsDisabled()) return;
     if (injected.current) return;
     injected.current = true;
 
