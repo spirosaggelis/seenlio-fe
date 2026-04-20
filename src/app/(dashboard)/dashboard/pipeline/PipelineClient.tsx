@@ -6,6 +6,7 @@ interface Target {
   id: string;
   source: string;
   videosPerPeriod: number;
+  productsPerPeriod: number;
   periodDays: number;
   discoveryLimit: number;
   isActive: boolean;
@@ -23,6 +24,7 @@ interface Run {
     discovered?: number;
     approved?: number;
     rejected?: number;
+    site_published?: number;
     videos_generated?: number;
     published?: number;
     errors?: number;
@@ -71,6 +73,7 @@ export default function PipelineClient({
   const [enabled, setEnabled] = useState(initialEnabled);
   const [interval, setInterval] = useState(initialInterval);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
@@ -78,6 +81,7 @@ export default function PipelineClient({
   const [formCategory, setFormCategory] = useState('');
   const [formSource, setFormSource] = useState<string>(SOURCES[0]);
   const [formVideos, setFormVideos] = useState(3);
+  const [formProducts, setFormProducts] = useState(10);
   const [formPeriod, setFormPeriod] = useState(7);
   const [formLimit, setFormLimit] = useState(20);
 
@@ -115,8 +119,10 @@ export default function PipelineClient({
     setFormCategory(categories[0]?.id || '');
     setFormSource(SOURCES[0]);
     setFormVideos(3);
+    setFormProducts(10);
     setFormPeriod(7);
     setFormLimit(20);
+    setFormError(null);
     setShowForm(true);
   }
 
@@ -125,18 +131,26 @@ export default function PipelineClient({
     setFormCategory(getCategoryId(target));
     setFormSource(target.source);
     setFormVideos(target.videosPerPeriod);
+    setFormProducts(target.productsPerPeriod ?? target.videosPerPeriod);
     setFormPeriod(target.periodDays);
     setFormLimit(target.discoveryLimit);
+    setFormError(null);
     setShowForm(true);
   }
 
   async function saveTarget() {
+    if (formProducts < formVideos) {
+      setFormError('Products to publish must be ≥ videos per period');
+      return;
+    }
+    setFormError(null);
     setSaving(true);
     try {
       const payload = {
         category: formCategory || undefined,
         source: formSource,
         videosPerPeriod: formVideos,
+        productsPerPeriod: formProducts,
         periodDays: formPeriod,
         discoveryLimit: formLimit,
         isActive: true,
@@ -254,7 +268,7 @@ export default function PipelineClient({
         {/* Add/Edit form */}
         {showForm && (
           <div className='p-5 border-b border-[var(--border-subtle)] bg-[var(--bg-tertiary)]'>
-            <div className='grid grid-cols-2 md:grid-cols-6 gap-3'>
+            <div className='grid grid-cols-2 md:grid-cols-7 gap-3'>
               <div>
                 <label className='text-xs text-[var(--fg-muted)] block mb-1'>Category</label>
                 <select
@@ -282,6 +296,17 @@ export default function PipelineClient({
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className='text-xs text-[var(--fg-muted)] block mb-1'>Products / Period</label>
+                <input
+                  type='number'
+                  min={1}
+                  max={200}
+                  value={formProducts}
+                  onChange={(e) => setFormProducts(Number(e.target.value))}
+                  className='w-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm text-[var(--fg-primary)] px-2 py-1.5'
+                />
               </div>
               <div>
                 <label className='text-xs text-[var(--fg-muted)] block mb-1'>Videos / Period</label>
@@ -332,6 +357,9 @@ export default function PipelineClient({
                 </button>
               </div>
             </div>
+            {formError && (
+              <p className='mt-3 text-xs text-red-400'>{formError}</p>
+            )}
           </div>
         )}
 
@@ -342,7 +370,8 @@ export default function PipelineClient({
               <tr className='text-xs text-[var(--fg-muted)] uppercase tracking-wider border-b border-[var(--border-subtle)]'>
                 <th className='text-left px-5 py-3'>Category</th>
                 <th className='text-left px-5 py-3'>Source</th>
-                <th className='text-center px-5 py-3'>Target</th>
+                <th className='text-center px-5 py-3'>Products</th>
+                <th className='text-center px-5 py-3'>Videos</th>
                 <th className='text-center px-5 py-3'>Period</th>
                 <th className='text-center px-5 py-3'>Max Retries</th>
                 <th className='text-center px-5 py-3'>Active</th>
@@ -352,7 +381,7 @@ export default function PipelineClient({
             <tbody>
               {targets.length === 0 && (
                 <tr>
-                  <td colSpan={7} className='px-5 py-8 text-center text-[var(--fg-muted)]'>
+                  <td colSpan={8} className='px-5 py-8 text-center text-[var(--fg-muted)]'>
                     No pipeline targets configured. Click &ldquo;Add Target&rdquo; to get started.
                   </td>
                 </tr>
@@ -378,6 +407,9 @@ export default function PipelineClient({
                     >
                       {target.source}
                     </span>
+                  </td>
+                  <td className='px-5 py-3 text-center text-[var(--fg-primary)]'>
+                    {target.productsPerPeriod ?? '-'}
                   </td>
                   <td className='px-5 py-3 text-center text-[var(--fg-primary)]'>
                     {target.videosPerPeriod}
@@ -441,6 +473,7 @@ export default function PipelineClient({
                 <th className='text-center px-5 py-3'>Discovered</th>
                 <th className='text-center px-5 py-3'>Approved</th>
                 <th className='text-center px-5 py-3'>Rejected</th>
+                <th className='text-center px-5 py-3'>Site Pub.</th>
                 <th className='text-center px-5 py-3'>Videos</th>
                 <th className='text-center px-5 py-3'>Published</th>
                 <th className='text-center px-5 py-3'>Errors</th>
@@ -450,7 +483,7 @@ export default function PipelineClient({
             <tbody>
               {initialRuns.length === 0 && (
                 <tr>
-                  <td colSpan={9} className='px-5 py-8 text-center text-[var(--fg-muted)]'>
+                  <td colSpan={10} className='px-5 py-8 text-center text-[var(--fg-muted)]'>
                     No pipeline runs yet.
                   </td>
                 </tr>
@@ -483,6 +516,7 @@ export default function PipelineClient({
                         <span className='text-[var(--fg-muted)]'>{result.rejected ?? '-'}</span>
                       )}
                     </td>
+                    <td className='px-5 py-3 text-center'>{result.site_published ?? '-'}</td>
                     <td className='px-5 py-3 text-center'>{result.videos_generated ?? '-'}</td>
                     <td className='px-5 py-3 text-center'>{result.published ?? '-'}</td>
                     <td className='px-5 py-3 text-center'>

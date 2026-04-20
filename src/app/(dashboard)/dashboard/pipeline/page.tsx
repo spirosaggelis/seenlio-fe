@@ -16,6 +16,7 @@ interface Target {
   id: string;
   source: string;
   videosPerPeriod: number;
+  productsPerPeriod: number;
   periodDays: number;
   discoveryLimit: number;
   isActive: boolean;
