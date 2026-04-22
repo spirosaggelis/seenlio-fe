@@ -356,9 +356,10 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
         `?client_id=${encodeURIComponent(clientId)}` +
         `&redirect_uri=${encodeURIComponent(redirectUri)}` +
         `&response_type=code` +
-        // Must match publisher `youtube.py` scopes; commentThreads.insert needs youtube.force-ssl.
+        // Must match publisher `youtube.py` scopes; commentThreads.insert needs youtube.force-ssl;
+        // yt-analytics.readonly is required for per-video analytics (shares, watch time, country).
         `&scope=${encodeURIComponent(
-          'https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.force-ssl',
+          'https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/yt-analytics.readonly',
         )}` +
         `&access_type=offline` +
         `&prompt=consent` +
