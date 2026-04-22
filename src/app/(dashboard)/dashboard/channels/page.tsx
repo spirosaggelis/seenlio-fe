@@ -4,6 +4,7 @@ import ChannelsClient from './ChannelsClient';
 interface PlatformAccount {
   id: string;
   platform: string;
+  uploadMode: 'api' | 'studio';
   accountName: string;
   accountId: string;
   isActive: boolean;

@@ -25,6 +25,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const result = await strapiMutate('POST', '/platform-accounts', {
       data: {
         platform: body.platform,
+        uploadMode: body.uploadMode || 'api',
         accountName: body.accountName,
         accountId: body.accountId || '',
         channel: body.channelId || undefined,
@@ -47,6 +48,7 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
 
     const payload: Record<string, unknown> = {};
     if (data.platform !== undefined) payload.platform = data.platform;
+    if (data.uploadMode !== undefined) payload.uploadMode = data.uploadMode;
     if (data.accountName !== undefined) payload.accountName = data.accountName;
     if (data.accountId !== undefined) payload.accountId = data.accountId;
     if (data.channelId !== undefined) payload.channel = data.channelId;

@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 interface PlatformAccount {
   id: string;
   platform: string;
+  uploadMode: 'api' | 'studio';
   accountName: string;
   accountId: string;
   isActive: boolean;
@@ -46,10 +47,17 @@ const PLATFORM_ICONS: Record<string, string> = {
 };
 
 function hasCredentials(account: PlatformAccount): boolean {
-  return !!(account.credentials && Object.keys(account.credentials).length > 0);
+  const creds = account.credentials || {};
+  // TikTok Studio mode only needs a cookies blob; the OAuth fields are absent.
+  if (account.platform === 'tiktok' && account.uploadMode === 'studio') {
+    return !!creds.cookies_txt;
+  }
+  return Object.keys(creds).length > 0;
 }
 
 function isTokenExpired(account: PlatformAccount): boolean {
+  // Studio (cookie) mode has no server-known expiry; cookies expire silently.
+  if (account.platform === 'tiktok' && account.uploadMode === 'studio') return false;
   if (!account.tokenExpiresAt) return false;
   return new Date(account.tokenExpiresAt) < new Date();
 }
@@ -90,6 +98,14 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
     boards: PinterestBoard[];
     selectedBoardId: string;
     loading: boolean;
+    saving: boolean;
+  } | null>(null);
+
+  // TikTok Studio cookies paste modal
+  const [tiktokCookiesModal, setTiktokCookiesModal] = useState<{
+    accountId: string;
+    accountName: string;
+    cookiesTxt: string;
     saving: boolean;
   } | null>(null);
 
@@ -186,6 +202,73 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
     } catch (err) {
       setToast({ type: 'error', message: String(err) });
       setPinterestModal((prev) => (prev ? { ...prev, saving: false } : null));
+    }
+  }
+
+  // ── TikTok Studio Cookies ──
+
+  function openTiktokCookiesModal(account: PlatformAccount) {
+    setTiktokCookiesModal({
+      accountId: account.id,
+      accountName: account.accountName,
+      cookiesTxt: '',
+      saving: false,
+    });
+  }
+
+  async function saveTiktokCookies() {
+    if (!tiktokCookiesModal) return;
+    const { accountId, cookiesTxt } = tiktokCookiesModal;
+    if (!cookiesTxt.trim()) {
+      setToast({ type: 'error', message: 'Paste your cookies.txt contents first' });
+      return;
+    }
+    setTiktokCookiesModal((prev) => (prev ? { ...prev, saving: true } : null));
+    try {
+      const res = await fetch('/api/dashboard/channels/tiktok-cookies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId, cookiesTxt }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setToast({ type: 'error', message: data.error || 'Failed to save cookies' });
+        setTiktokCookiesModal((prev) => (prev ? { ...prev, saving: false } : null));
+        return;
+      }
+      await refreshChannels();
+      setTiktokCookiesModal(null);
+      setToast({ type: 'success', message: 'TikTok Studio cookies saved' });
+    } catch (err) {
+      setToast({ type: 'error', message: String(err) });
+      setTiktokCookiesModal((prev) => (prev ? { ...prev, saving: false } : null));
+    }
+  }
+
+  async function setTiktokUploadMode(account: PlatformAccount, mode: 'api' | 'studio') {
+    if (account.uploadMode === mode) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/dashboard/channels/accounts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: account.id, uploadMode: mode }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setToast({ type: 'error', message: data.error || 'Failed to switch upload mode' });
+        return;
+      }
+      await refreshChannels();
+      setToast({
+        type: 'success',
+        message:
+          mode === 'studio'
+            ? 'Switched to TikTok Studio (cookies). Paste cookies next.'
+            : 'Switched to TikTok API (OAuth).',
+      });
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -477,6 +560,63 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
         </div>
       )}
 
+      {/* TikTok Studio Cookies Modal */}
+      {tiktokCookiesModal && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4'>
+          <div className='bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-6 w-full max-w-xl shadow-xl'>
+            <h3 className='text-sm font-semibold text-[var(--fg-primary)] mb-1'>
+              TikTok Studio Cookies
+            </h3>
+            <p className='text-xs text-[var(--fg-muted)] mb-3'>
+              Paste the Netscape-format{' '}
+              <code className='text-[var(--fg-primary)]'>cookies.txt</code> exported from your
+              browser while logged into{' '}
+              <a
+                href='https://www.tiktok.com'
+                target='_blank'
+                rel='noreferrer'
+                className='underline text-[var(--accent-purple-light)]'
+              >
+                tiktok.com
+              </a>
+              . Account: <span className='text-[var(--fg-primary)]'>{tiktokCookiesModal.accountName}</span>
+            </p>
+            <p className='text-[11px] text-[var(--fg-muted)] mb-3'>
+              Tip: use a &ldquo;Get cookies.txt LOCALLY&rdquo; Chrome/Firefox extension on tiktok.com,
+              copy the whole file, and paste it here.
+            </p>
+
+            <textarea
+              value={tiktokCookiesModal.cookiesTxt}
+              onChange={(e) =>
+                setTiktokCookiesModal((prev) =>
+                  prev ? { ...prev, cookiesTxt: e.target.value } : null,
+                )
+              }
+              placeholder={'# Netscape HTTP Cookie File\n.tiktok.com\tTRUE\t/\tTRUE\t...\tsessionid\t...'}
+              rows={10}
+              className='w-full bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-xs font-mono text-[var(--fg-primary)] px-3 py-2 mb-4'
+            />
+
+            <div className='flex gap-2 justify-end'>
+              <button
+                onClick={() => setTiktokCookiesModal(null)}
+                className='px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] border border-[var(--border-subtle)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)]'
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveTiktokCookies}
+                disabled={tiktokCookiesModal.saving || !tiktokCookiesModal.cookiesTxt.trim()}
+                className='px-4 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 disabled:opacity-50'
+              >
+                {tiktokCookiesModal.saving ? 'Saving…' : 'Save Cookies'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Channel */}
       <div className='flex justify-end'>
         <button
@@ -687,9 +827,44 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                     </div>
 
                     <div className='flex items-center gap-3'>
-                      {/* Connect / Reconnect button */}
+                      {/* TikTok: choose upload mode (API vs Studio/Cookies) */}
+                      {account.platform === 'tiktok' && (
+                        <div
+                          className='inline-flex rounded-[var(--radius-sm)] border border-[var(--border-subtle)] overflow-hidden text-[10px] font-medium'
+                          title='API = official OAuth Content Posting API. Studio = Selenium + cookies (TikTok Studio).'
+                        >
+                          <button
+                            onClick={() => setTiktokUploadMode(account, 'api')}
+                            className={[
+                              'px-2 py-1 transition-colors',
+                              account.uploadMode === 'api'
+                                ? 'bg-[var(--accent-purple)] text-white'
+                                : 'text-[var(--fg-muted)] hover:text-[var(--fg-primary)]',
+                            ].join(' ')}
+                          >
+                            API
+                          </button>
+                          <button
+                            onClick={() => setTiktokUploadMode(account, 'studio')}
+                            className={[
+                              'px-2 py-1 border-l border-[var(--border-subtle)] transition-colors',
+                              account.uploadMode === 'studio'
+                                ? 'bg-[var(--accent-purple)] text-white'
+                                : 'text-[var(--fg-muted)] hover:text-[var(--fg-primary)]',
+                            ].join(' ')}
+                          >
+                            Studio
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Connect / Reconnect button — studio mode uses the cookies modal */}
                       <button
-                        onClick={() => connectAccount(account)}
+                        onClick={() =>
+                          account.platform === 'tiktok' && account.uploadMode === 'studio'
+                            ? openTiktokCookiesModal(account)
+                            : connectAccount(account)
+                        }
                         className={[
                           'px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] transition-all',
                           connected && !expired
@@ -697,11 +872,13 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                             : 'bg-[var(--accent-purple)] text-white hover:opacity-90',
                         ].join(' ')}
                       >
-                        {connected
-                          ? expired
+                        {account.platform === 'tiktok' && account.uploadMode === 'studio'
+                          ? connected
+                            ? 'Update Cookies'
+                            : 'Paste Cookies'
+                          : connected
                             ? 'Reconnect'
-                            : 'Reconnect'
-                          : 'Connect'}
+                            : 'Connect'}
                       </button>
 
                       {account.platform === 'pinterest' && connected && !expired && (

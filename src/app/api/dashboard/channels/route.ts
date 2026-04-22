@@ -55,6 +55,7 @@ export async function GET(): Promise<NextResponse> {
           return {
             id: acc.documentId || acc.id,
             platform: accAttrs.platform,
+            uploadMode: accAttrs.uploadMode || 'api',
             accountName: accAttrs.accountName,
             accountId: accAttrs.accountId,
             isActive: accAttrs.isActive,
