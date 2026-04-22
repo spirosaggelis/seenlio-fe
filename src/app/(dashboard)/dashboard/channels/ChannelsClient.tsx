@@ -144,6 +144,55 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
     }
   }, [toast]);
 
+  // Backfill board_name for Pinterest accounts that were connected before we
+  // started persisting the board name. Runs once per account; the Pinterest
+  // boards route already checks the stored access_token, so invalid tokens are
+  // silently ignored here.
+  useEffect(() => {
+    const needsBackfill = channels
+      .flatMap((c) => c.platformAccounts)
+      .filter(
+        (a) =>
+          a.platform === 'pinterest' &&
+          a.credentials?.board_id &&
+          !a.credentials?.board_name,
+      );
+    if (needsBackfill.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      for (const acc of needsBackfill) {
+        try {
+          const res = await fetch(
+            `/api/dashboard/channels/pinterest-boards?accountId=${acc.id}`,
+          );
+          if (!res.ok) continue;
+          const data = await res.json();
+          const boards = (data.boards || []) as { id: string; name: string }[];
+          const match = boards.find((b) => b.id === acc.credentials?.board_id);
+          if (!match || cancelled) continue;
+
+          await fetch('/api/dashboard/channels/accounts', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: acc.id,
+              credentials: { ...(acc.credentials || {}), board_name: match.name },
+            }),
+          });
+        } catch {
+          // Swallow per-account errors — backfill is best-effort.
+        }
+      }
+      if (!cancelled) await refreshChannels();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function refreshChannels(): Promise<Channel[]> {
     const res = await fetch('/api/dashboard/channels');
     const data = await res.json();
@@ -183,9 +232,14 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
         .flatMap((c) => c.platformAccounts)
         .find((a) => a.id === pinterestModal.accountId);
 
+      const board = pinterestModal.boards.find((b) => b.id === pinterestModal.selectedBoardId);
+
       const updatedCredentials = {
         ...(account?.credentials || {}),
         board_id: pinterestModal.selectedBoardId,
+        // Store name alongside id so the dashboard can show the readable board name
+        // without re-hitting Pinterest on every render.
+        board_name: board?.name || '',
       };
 
       await fetch('/api/dashboard/channels/accounts', {
@@ -197,7 +251,6 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
       await refreshChannels();
       setPinterestModal(null);
 
-      const board = pinterestModal.boards.find((b) => b.id === pinterestModal.selectedBoardId);
       setToast({ type: 'success', message: `Pinterest connected — board: ${board?.name || pinterestModal.selectedBoardId}` });
     } catch (err) {
       setToast({ type: 'error', message: String(err) });
@@ -748,15 +801,21 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
             >
               {/* Platform badges summary */}
               <div className='flex gap-1'>
-                {channel.platformAccounts.map((acc) => (
-                  <span
-                    key={acc.id}
-                    className={`inline-flex items-center justify-center w-7 h-7 rounded text-[10px] font-bold border ${PLATFORM_COLORS[acc.platform] || 'bg-gray-500/20 text-gray-300 border-gray-500/30'} ${hasCredentials(acc) ? '' : 'opacity-40'}`}
-                    title={`${acc.accountName} (${acc.platform})${hasCredentials(acc) ? ' - Connected' : ' - Not connected'}`}
-                  >
-                    {PLATFORM_ICONS[acc.platform] || '?'}
-                  </span>
-                ))}
+                {channel.platformAccounts.map((acc) => {
+                  const boardSuffix =
+                    acc.platform === 'pinterest' && acc.credentials?.board_id
+                      ? ` — board: ${acc.credentials.board_name || acc.credentials.board_id}`
+                      : '';
+                  return (
+                    <span
+                      key={acc.id}
+                      className={`inline-flex items-center justify-center w-7 h-7 rounded text-[10px] font-bold border ${PLATFORM_COLORS[acc.platform] || 'bg-gray-500/20 text-gray-300 border-gray-500/30'} ${hasCredentials(acc) ? '' : 'opacity-40'}`}
+                      title={`${acc.accountName} (${acc.platform})${hasCredentials(acc) ? ' - Connected' : ' - Not connected'}${boardSuffix}`}
+                    >
+                      {PLATFORM_ICONS[acc.platform] || '?'}
+                    </span>
+                  );
+                })}
               </div>
               <button
                 onClick={() => openEditChannel(channel)}
@@ -801,7 +860,7 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                         <p className='text-sm font-medium text-[var(--fg-primary)]'>
                           {account.accountName}
                         </p>
-                        <div className='flex items-center gap-2 mt-0.5'>
+                        <div className='flex items-center gap-2 mt-0.5 flex-wrap'>
                           <span
                             className={`text-xs ${connected ? (expired ? 'text-orange-400' : 'text-green-400') : 'text-red-400'}`}
                           >
@@ -811,6 +870,18 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                                 : 'Connected'
                               : 'Not connected'}
                           </span>
+                          {account.platform === 'pinterest' && account.credentials?.board_id && (
+                            <span
+                              className='text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-orange-500/40 text-orange-300 bg-orange-500/10'
+                              title={`Board id: ${account.credentials.board_id}`}
+                            >
+                              Board:{' '}
+                              <span className='normal-case tracking-normal font-medium'>
+                                {account.credentials.board_name ||
+                                  account.credentials.board_id}
+                              </span>
+                            </span>
+                          )}
                           {account.lastPostedAt && (
                             <span className='text-xs text-[var(--fg-muted)]'>
                               Last post:{' '}
