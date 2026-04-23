@@ -127,6 +127,29 @@ function stripInactiveCategories<T>(products: T[]): T[] {
   });
 }
 
+/** Resolve product display fields by productCode (for BigQuery item_code enrichment). */
+export async function getProductsByCodes(codes: string[]): Promise<Record<string, unknown>[]> {
+  const uniq = [...new Set(codes.map((c) => String(c).trim()).filter(Boolean))];
+  if (!uniq.length) return [];
+
+  const out: Record<string, unknown>[] = [];
+  const pageSize = 100;
+
+  for (let page = 1; page <= 50; page++) {
+    const res = await fetchStrapi<unknown[]>('/products', {
+      filters: { productCode: { $in: uniq }, ...PUBLISHED_PRODUCT_FILTER },
+      fields: ['productCode', 'name', 'slug', 'sourcePlatform'],
+      pagination: { page, pageSize },
+    });
+    const batch = Array.isArray(res.data) ? (res.data as Record<string, unknown>[]) : [];
+    out.push(...batch);
+    const pageCount = res.meta?.pagination?.pageCount ?? 1;
+    if (page >= pageCount || batch.length < pageSize) break;
+  }
+
+  return out;
+}
+
 export async function getProducts(options: FetchOptions = {}) {
   const res = await fetchStrapi<unknown[]>('/products', {
     populate: ['categories', 'media', 'pricePoints', 'featuredImage'],

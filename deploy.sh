@@ -2,10 +2,16 @@
 set -e
 
 APP_DIR="/home/glow/seenlio/seenlio-fe"
+SECRET_ROOT="/home/glow/seenlio"
 cd "$APP_DIR"
 
-# Symlink env file from central location
-ln -sf /home/glow/seenlio/.env.fe "$APP_DIR/.env"
+# Symlink env + optional GCP key from central location (never commit these; repo stays clean)
+ln -sf "$SECRET_ROOT/.env.fe" "$APP_DIR/.env"
+# BigQuery: put the service account JSON on the server as $SECRET_ROOT/seenlio-259d77d92204.json (chmod 600).
+# In .env.fe use: GOOGLE_APPLICATION_CREDENTIALS=./seenlio-259d77d92204.json
+if [ -f "$SECRET_ROOT/seenlio-259d77d92204.json" ]; then
+  ln -sf "$SECRET_ROOT/seenlio-259d77d92204.json" "$APP_DIR/seenlio-259d77d92204.json"
+fi
 
 echo "=== Seenlio Frontend (Next.js) Deploy ==="
 echo "$(date '+%Y-%m-%d %H:%M:%S')"

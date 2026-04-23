@@ -1,6 +1,4 @@
 import { redirect } from 'next/navigation';
-import { after } from 'next/server';
-import { createHash } from 'crypto';
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import GoRedirectClient from './GoRedirectClient';
@@ -263,82 +261,6 @@ async function buildDestinationUrl(
   }
 }
 
-// ── Strapi click tracking (server-side) ────────────────────────────────────
-
-async function trackClickInStrapi(
-  reqHeaders: Awaited<ReturnType<typeof headers>>,
-  product: Product,
-  destinationUrl: string,
-): Promise<void> {
-  const ip =
-    reqHeaders.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    reqHeaders.get('x-real-ip') ||
-    '0.0.0.0';
-  const ua = reqHeaders.get('user-agent') || '';
-  const referrer = reqHeaders.get('referer') || '';
-  const country =
-    reqHeaders.get('x-vercel-ip-country') ||
-    reqHeaders.get('cf-ipcountry') ||
-    null;
-
-  const salt = process.env.IP_HASH_SALT || 'default-salt-change-me';
-  const ipHash = createHash('sha256')
-    .update(ip + salt)
-    .digest('hex')
-    .slice(0, 16);
-
-  let deviceType = 'unknown';
-  const lower = ua.toLowerCase();
-  if (/tablet|ipad/.test(lower)) deviceType = 'tablet';
-  else if (/mobile|android|iphone|ipod|windows phone/.test(lower))
-    deviceType = 'mobile';
-  else if (ua) deviceType = 'desktop';
-
-  let referrerSource = 'direct';
-  if (referrer) {
-    try {
-      const host = new URL(referrer).hostname.toLowerCase();
-      if (/tiktok\.com/.test(host)) referrerSource = 'tiktok';
-      else if (/youtube\.com|youtu\.be/.test(host)) referrerSource = 'youtube';
-      else if (/instagram\.com/.test(host)) referrerSource = 'instagram';
-      else if (/facebook\.com|fb\.com/.test(host)) referrerSource = 'facebook';
-      else if (/twitter\.com|x\.com/.test(host)) referrerSource = 'twitter';
-      else if (/pinterest\.com/.test(host)) referrerSource = 'pinterest';
-      else if (/google\./.test(host)) referrerSource = 'google';
-      else referrerSource = 'other';
-    } catch {
-      // keep 'direct'
-    }
-  }
-
-  await fetch(`${STRAPI_URL}/api/site-events`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${STRAPI_TOKEN}`,
-    },
-    body: JSON.stringify({
-      data: {
-        event_type: 'affiliate_click',
-        page: `/go/${product.productCode}`,
-        ip_hash: ipHash,
-        country,
-        device_type: deviceType,
-        referrer: referrer || null,
-        referrer_source: referrerSource,
-        click_source: 'short_url',
-        affiliate_platform: product.sourcePlatform || null,
-        product: product.id,
-        metadata: {
-          product_code: product.productCode,
-          destination: destinationUrl,
-          source: 'short_url',
-        },
-      },
-    }),
-  }).catch(() => {});
-}
-
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default async function GoPage({
@@ -376,9 +298,6 @@ export default async function GoPage({
   );
   const destinationUrl = await buildDestinationUrl(product, patterns, country);
   console.log(`[go] destinationUrl=${destinationUrl}`);
-
-  // Fire Strapi tracking after response streams — never blocks the page
-  after(() => trackClickInStrapi(reqHeaders, product, destinationUrl));
 
   return (
     <GoRedirectClient

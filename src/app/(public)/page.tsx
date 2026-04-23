@@ -1,3 +1,4 @@
+import { getRollingPageViewCount } from '@/lib/bq/rollingPageViews';
 import { getTrendingProducts, getCategories, getProducts, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
 import HeroSection from "@/components/HeroSection";
 import SectionHeader from "@/components/SectionHeader";
@@ -49,7 +50,7 @@ export default async function HomePage() {
   let pageViews = 0;
 
   try {
-    const [trendingData, categoryData, recentData, productCountData, pageViewData] = await Promise.all([
+    const [trendingData, categoryData, recentData, productCountData, pageViewCount] = await Promise.all([
       getTrendingProducts(),
       getCategories({ pagination: { pageSize: 10 } }),
       getProducts({
@@ -62,20 +63,15 @@ export default async function HomePage() {
         fields: ["id"],
         pagination: { pageSize: 1 },
       }),
-      fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'}/api/site-events?filters[event_type][$eq]=page_view&pagination[pageSize]=1&fields[0]=id`, {
-        headers: {
-          ...(process.env.STRAPI_API_TOKEN ? { Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}` } : {}),
-        },
-        next: { revalidate: 300 },
-      }).then((r) => (r.ok ? r.json() : { meta: { pagination: { total: 0 } } })),
+      getRollingPageViewCount(365),
     ]);
     trending = (trendingData || []) as Product[];
     categories = (categoryData.data || []) as Category[];
     recent = (recentData.data || []) as Product[];
     productCount = productCountData.meta?.pagination?.total ?? 0;
-    pageViews = pageViewData?.meta?.pagination?.total ?? 0;
+    pageViews = pageViewCount;
   } catch {
-    // Strapi may not be running yet
+    // Strapi / BigQuery may not be configured locally
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
