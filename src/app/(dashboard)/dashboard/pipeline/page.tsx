@@ -1,7 +1,7 @@
 import KpiCard from '../_components/KpiCard';
 import { getBaseUrl } from '@/lib/dashboard-api';
 import PipelineClient from './PipelineClient';
-import ChannelTargetsClient from './ChannelTargetsClient';
+import PipelineRunsClient from './PipelineRunsClient';
 
 interface PipelineData {
   targets: Target[];
@@ -11,26 +11,17 @@ interface PipelineData {
   pipelineEnabled: boolean;
   pipelineIntervalMinutes: number;
   categories: { id: string; name: string }[];
-  channels: { id: string; name: string }[];
-  channelTargets: ChannelTarget[];
 }
 
 interface Target {
   id: string;
   source: string;
   productsPerPeriod: number;
+  videosPerPeriod: number;
   periodDays: number;
   discoveryLimit: number;
   isActive: boolean;
   category?: { id?: string; name?: string; data?: { id: string; name: string } };
-}
-
-interface ChannelTarget {
-  id: string;
-  videosPerPeriod: number;
-  periodDays: number;
-  isActive: boolean;
-  channel?: { id?: string; name?: string; data?: { id: string; name: string } };
 }
 
 interface Run {
@@ -45,6 +36,7 @@ interface Run {
     approved?: number;
     rejected?: number;
     videos_generated?: number;
+    scheduled?: number;
     published?: number;
     errors?: number;
   };
@@ -63,8 +55,6 @@ async function fetchPipeline(): Promise<PipelineData> {
       pipelineEnabled: false,
       pipelineIntervalMinutes: 30,
       categories: [],
-      channels: [],
-      channelTargets: [],
     };
   }
   return res.json();
@@ -101,19 +91,16 @@ export default async function PipelinePage() {
         <KpiCard label='Last Run' value={lastRunLabel} accent='purple' />
       </div>
 
-      {/* Interactive sections */}
+      {/* Pipeline targets (products AND videos per category × source) + controls */}
       <PipelineClient
         initialTargets={data.targets}
-        initialRuns={data.recentRuns}
         pipelineEnabled={data.pipelineEnabled}
         pipelineIntervalMinutes={data.pipelineIntervalMinutes}
         categories={data.categories}
       />
 
-      <ChannelTargetsClient
-        initialTargets={data.channelTargets}
-        channels={data.channels}
-      />
+      {/* Recent pipeline runs */}
+      <PipelineRunsClient runs={data.recentRuns} />
     </div>
   );
 }

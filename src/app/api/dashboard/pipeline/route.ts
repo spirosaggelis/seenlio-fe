@@ -26,8 +26,6 @@ export async function GET(): Promise<NextResponse> {
       publishedRes,
       settingRes,
       categoriesRes,
-      channelTargetsRes,
-      channelsRes,
     ] = await Promise.all([
       strapiGet(
         '/pipeline-targets?populate[0]=category&pagination[pageSize]=100&sort=createdAt:asc',
@@ -43,12 +41,6 @@ export async function GET(): Promise<NextResponse> {
       ),
       strapiGet('/setting'),
       strapiGet('/categories?fields[0]=id&fields[1]=name&filters[isActive][$eq]=true&sort=name:asc&pagination[pageSize]=100'),
-      strapiGet(
-        '/channel-targets?populate[0]=channel&pagination[pageSize]=100&sort=createdAt:asc',
-      ),
-      strapiGet(
-        '/channels?fields[0]=id&fields[1]=name&filters[isActive][$eq]=true&sort=name:asc&pagination[pageSize]=100',
-      ),
     ]);
 
     const targets = (targetsRes.data || []).map((t: Record<string, unknown>) => {
@@ -69,21 +61,6 @@ export async function GET(): Promise<NextResponse> {
       return { id: c.documentId || c.id, name: attrs.name };
     });
 
-    const channels = (channelsRes.data || []).map((c: Record<string, unknown>) => {
-      const attrs = ((c as Record<string, unknown>).attributes || c) as Record<string, unknown>;
-      return { id: c.documentId || c.id, name: attrs.name };
-    });
-
-    const channelTargets = (channelTargetsRes.data || []).map(
-      (t: Record<string, unknown>) => {
-        const attrs = ((t as Record<string, unknown>).attributes || t) as Record<string, unknown>;
-        return {
-          ...attrs,
-          id: t.documentId || attrs.documentId || t.id,
-        };
-      },
-    );
-
     return NextResponse.json({
       targets,
       recentRuns,
@@ -92,8 +69,6 @@ export async function GET(): Promise<NextResponse> {
       pipelineEnabled: settingAttrs.pipelineEnabled ?? false,
       pipelineIntervalMinutes: settingAttrs.pipelineIntervalMinutes ?? 30,
       categories,
-      channels,
-      channelTargets,
     });
   } catch (error) {
     console.error('Pipeline dashboard error:', error);
