@@ -1,6 +1,7 @@
 import KpiCard from '../_components/KpiCard';
 import { getBaseUrl } from '@/lib/dashboard-api';
 import PipelineClient from './PipelineClient';
+import ChannelTargetsClient from './ChannelTargetsClient';
 
 interface PipelineData {
   targets: Target[];
@@ -10,17 +11,26 @@ interface PipelineData {
   pipelineEnabled: boolean;
   pipelineIntervalMinutes: number;
   categories: { id: string; name: string }[];
+  channels: { id: string; name: string }[];
+  channelTargets: ChannelTarget[];
 }
 
 interface Target {
   id: string;
   source: string;
-  videosPerPeriod: number;
   productsPerPeriod: number;
   periodDays: number;
   discoveryLimit: number;
   isActive: boolean;
   category?: { id?: string; name?: string; data?: { id: string; name: string } };
+}
+
+interface ChannelTarget {
+  id: string;
+  videosPerPeriod: number;
+  periodDays: number;
+  isActive: boolean;
+  channel?: { id?: string; name?: string; data?: { id: string; name: string } };
 }
 
 interface Run {
@@ -53,6 +63,8 @@ async function fetchPipeline(): Promise<PipelineData> {
       pipelineEnabled: false,
       pipelineIntervalMinutes: 30,
       categories: [],
+      channels: [],
+      channelTargets: [],
     };
   }
   return res.json();
@@ -96,6 +108,11 @@ export default async function PipelinePage() {
         pipelineEnabled={data.pipelineEnabled}
         pipelineIntervalMinutes={data.pipelineIntervalMinutes}
         categories={data.categories}
+      />
+
+      <ChannelTargetsClient
+        initialTargets={data.channelTargets}
+        channels={data.channels}
       />
     </div>
   );
