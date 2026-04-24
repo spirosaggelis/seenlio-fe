@@ -34,14 +34,14 @@ export default function ChannelTargetsClient({ initialTargets, channels }: Props
   const [editId, setEditId] = useState<string | null>(null);
 
   const [formChannel, setFormChannel] = useState(channels[0]?.id || '');
-  const [formVideos, setFormVideos] = useState(3);
-  const [formPeriod, setFormPeriod] = useState(7);
+  const [formVideos, setFormVideos] = useState(1);
+  const [formPeriod, setFormPeriod] = useState(1);
 
   function openAddForm() {
     setEditId(null);
     setFormChannel(channels[0]?.id || '');
-    setFormVideos(3);
-    setFormPeriod(7);
+    setFormVideos(1);
+    setFormPeriod(1);
     setShowForm(true);
   }
 
