@@ -10,6 +10,8 @@ interface LogEntry {
   message?: string;
   category?: string;
   source?: string;
+  channel?: string;
+  platform?: string;
   runId?: string;
   targetId?: string;
   context?: Record<string, unknown>;
@@ -114,16 +116,18 @@ export default function LogsClient({ initialLogs, initialPagination }: Props) {
               <tr className='text-xs text-[var(--fg-muted)] uppercase tracking-wider border-b border-[var(--border-subtle)]'>
                 <th className='text-left px-5 py-3'>Time</th>
                 <th className='text-left px-5 py-3'>Level</th>
-                <th className='text-left px-5 py-3'>Service</th>
                 <th className='text-left px-5 py-3'>Event</th>
-                <th className='text-left px-5 py-3'>Message</th>
+                <th className='text-left px-5 py-3'>Channel</th>
+                <th className='text-left px-5 py-3'>Platform</th>
+                <th className='text-left px-5 py-3'>Source</th>
                 <th className='text-left px-5 py-3'>Category</th>
+                <th className='text-left px-5 py-3'>Message</th>
               </tr>
             </thead>
             <tbody>
               {logs.length === 0 && (
                 <tr>
-                  <td colSpan={6} className='px-5 py-12 text-center text-[var(--fg-muted)]'>
+                  <td colSpan={8} className='px-5 py-12 text-center text-[var(--fg-muted)]'>
                     No logs found.
                   </td>
                 </tr>
@@ -142,24 +146,30 @@ export default function LogsClient({ initialLogs, initialPagination }: Props) {
                         {log.level || 'info'}
                       </span>
                     </td>
-                    <td className='px-5 py-3 text-[var(--fg-muted)] text-xs'>
-                      {log.service || '-'}
-                    </td>
                     <td className='px-5 py-3 text-[var(--fg-secondary)] font-mono text-xs'>
                       {log.event}
                     </td>
-                    <td className='px-5 py-3 text-[var(--fg-primary)] max-w-xs truncate'>
-                      {log.message || '-'}
+                    <td className='px-5 py-3 text-[var(--fg-muted)] text-xs whitespace-nowrap'>
+                      {log.channel || '-'}
                     </td>
-                    <td className='px-5 py-3 text-[var(--fg-muted)]'>
+                    <td className='px-5 py-3 text-[var(--fg-muted)] text-xs whitespace-nowrap'>
+                      {log.platform || '-'}
+                    </td>
+                    <td className='px-5 py-3 text-[var(--fg-muted)] text-xs whitespace-nowrap'>
+                      {log.source || '-'}
+                    </td>
+                    <td className='px-5 py-3 text-[var(--fg-muted)] whitespace-nowrap'>
                       {log.category || '-'}
+                    </td>
+                    <td className='px-5 py-3 text-[var(--fg-primary)] max-w-md truncate'>
+                      {log.message || '-'}
                     </td>
                   </tr>
 
                   {/* Expanded detail row */}
                   {expanded === log.id && (
                     <tr key={`${log.id}-detail`} className='border-b border-[var(--border-subtle)]'>
-                      <td colSpan={6} className='px-5 py-4 bg-[var(--bg-tertiary)]'>
+                      <td colSpan={8} className='px-5 py-4 bg-[var(--bg-tertiary)]'>
                         <div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-sm'>
                           {log.message && (
                             <div className='md:col-span-2'>
