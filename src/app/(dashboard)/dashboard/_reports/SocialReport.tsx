@@ -1,9 +1,7 @@
-import { Suspense } from 'react';
 import KpiCard from '../_components/KpiCard';
 import TimeSeriesChart from '../_components/TimeSeriesChart';
 import BarChartH from '../_components/BarChartH';
 import DonutChart from '../_components/DonutChart';
-import DateRangePicker from '../_components/DateRangePicker';
 import { getBaseUrl } from '@/lib/dashboard-api';
 import type { PivotRow } from '@/app/api/dashboard/social/route';
 import SocialPivot from './SocialPivot';
@@ -25,32 +23,12 @@ async function fetchSocial(from: string, to: string): Promise<SocialData> {
   return res.json();
 }
 
-interface PageProps {
-  searchParams: Promise<{ from?: string; to?: string }>;
-}
-
-export default async function SocialPage({ searchParams }: PageProps) {
-  const params = await searchParams;
-  const to = params.to ?? new Date().toISOString().split('T')[0];
-  const now = new Date();
-  const from = params.from ?? new Date(now.getTime() - 30 * 86_400_000).toISOString().split('T')[0];
-
+export default async function SocialReport({ from, to }: { from: string; to: string }) {
   const data = await fetchSocial(from, to);
   const { totals } = data;
 
   return (
     <div className='space-y-8'>
-      <div className='flex items-center justify-between flex-wrap gap-4'>
-        <div>
-          <h1 className='text-2xl font-bold text-[var(--fg-primary)]'>Social Media</h1>
-          <p className='text-sm text-[var(--fg-muted)] mt-1'>Performance across YouTube, TikTok, Instagram, Pinterest</p>
-        </div>
-        <Suspense>
-          <DateRangePicker />
-        </Suspense>
-      </div>
-
-      {/* KPI cards */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
         <KpiCard label='Views' value={(totals.views ?? 0).toLocaleString()} accent='purple' />
         <KpiCard label='Likes' value={(totals.likes ?? 0).toLocaleString()} accent='pink' />
@@ -58,15 +36,14 @@ export default async function SocialPage({ searchParams }: PageProps) {
         <KpiCard label='Comments' value={(totals.comments ?? 0).toLocaleString()} accent='purple' />
       </div>
 
-      {/* Views timeseries */}
       <div className='bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-6'>
-        <h2 className='text-sm font-semibold text-[var(--fg-secondary)] uppercase tracking-wider mb-4'>
+        <h2 className='text-sm font-semibold text-[var(--fg-secondary)] uppercase tracking-wider mb-1'>
           Views Over Time
         </h2>
+        <p className='text-xs text-[var(--fg-muted)] mb-4'>Bucketed by video published date.</p>
         <TimeSeriesChart data={data.timeseries} label='Views' color='#8b5cf6' />
       </div>
 
-      {/* Platform breakdown + top videos */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
         <div className='bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-6'>
           <h2 className='text-sm font-semibold text-[var(--fg-secondary)] uppercase tracking-wider mb-4'>
@@ -83,7 +60,6 @@ export default async function SocialPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      {/* Pivot table */}
       <div className='bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-6'>
         <div className='mb-4'>
           <h2 className='text-sm font-semibold text-[var(--fg-secondary)] uppercase tracking-wider'>

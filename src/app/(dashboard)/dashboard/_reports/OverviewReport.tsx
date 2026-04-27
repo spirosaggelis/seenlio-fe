@@ -1,11 +1,9 @@
-import { Suspense } from 'react';
 import KpiCard from '../_components/KpiCard';
 import OverviewMetricsChart, {
   type OverviewMetricsPoint,
 } from '../_components/OverviewMetricsChart';
 import DonutChart from '../_components/DonutChart';
 import BarChartH from '../_components/BarChartH';
-import DateRangePicker from '../_components/DateRangePicker';
 import { getBaseUrl } from '@/lib/dashboard-api';
 
 interface SourceSlice {
@@ -31,7 +29,7 @@ async function fetchOverview(from: string, to: string): Promise<OverviewData> {
   const res = await fetch(`${base}/api/dashboard/overview?from=${from}&to=${to}`, {
     next: { revalidate: 300 },
   });
-  const emptySources: SourceSlice[] = [];
+  const empty: SourceSlice[] = [];
   if (!res.ok)
     return {
       pageViews: 0,
@@ -41,9 +39,9 @@ async function fetchOverview(from: string, to: string): Promise<OverviewData> {
       avgDuration: 0,
       timeseries: [],
       deltas: { pageViews: null, sessions: null },
-      trafficSources: emptySources,
-      trafficMediums: emptySources,
-      sourceMedium: emptySources,
+      trafficSources: empty,
+      trafficMediums: empty,
+      sourceMedium: empty,
     };
   return res.json();
 }
@@ -53,32 +51,11 @@ function formatDuration(seconds: number): string {
   return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 
-interface PageProps {
-  searchParams: Promise<{ from?: string; to?: string }>;
-}
-
-export default async function OverviewPage({ searchParams }: PageProps) {
-  const params = await searchParams;
-  const to = params.to ?? new Date().toISOString().split('T')[0];
-  const now = new Date();
-  const from = params.from ?? new Date(now.getTime() - 30 * 86_400_000).toISOString().split('T')[0];
-
+export default async function OverviewReport({ from, to }: { from: string; to: string }) {
   const data = await fetchOverview(from, to);
 
   return (
     <div className='space-y-8'>
-      {/* Header */}
-      <div className='flex items-center justify-between flex-wrap gap-4'>
-        <div>
-          <h1 className='text-2xl font-bold text-[var(--fg-primary)]'>Overview</h1>
-          <p className='text-sm text-[var(--fg-muted)] mt-1'>Site-wide performance summary</p>
-        </div>
-        <Suspense>
-          <DateRangePicker />
-        </Suspense>
-      </div>
-
-      {/* KPI cards */}
       <div className='grid grid-cols-2 lg:grid-cols-5 gap-4'>
         <KpiCard
           label='Page Views'
@@ -92,24 +69,11 @@ export default async function OverviewPage({ searchParams }: PageProps) {
           delta={data.deltas.sessions ?? undefined}
           accent='cyan'
         />
-        <KpiCard
-          label='Unique Visitors'
-          value={data.uniqueVisitors.toLocaleString()}
-          accent='pink'
-        />
-        <KpiCard
-          label='Bounce Rate'
-          value={`${data.bounceRate}%`}
-          accent='purple'
-        />
-        <KpiCard
-          label='Avg. Duration'
-          value={formatDuration(data.avgDuration)}
-          accent='cyan'
-        />
+        <KpiCard label='Unique Visitors' value={data.uniqueVisitors.toLocaleString()} accent='pink' />
+        <KpiCard label='Bounce Rate' value={`${data.bounceRate}%`} accent='purple' />
+        <KpiCard label='Avg. Duration' value={formatDuration(data.avgDuration)} accent='cyan' />
       </div>
 
-      {/* Time series */}
       <div className='bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-6'>
         <h2 className='text-sm font-semibold text-[var(--fg-secondary)] uppercase tracking-wider mb-4'>
           Traffic over time
@@ -120,7 +84,6 @@ export default async function OverviewPage({ searchParams }: PageProps) {
         <OverviewMetricsChart data={data.timeseries} />
       </div>
 
-      {/* Acquisition: sources & mediums (GA4 traffic_source on page_view) */}
       <div className='space-y-6'>
         <h2 className='text-sm font-semibold text-[var(--fg-secondary)] uppercase tracking-wider'>
           Where traffic comes from

@@ -61,7 +61,6 @@ const ctrColumns = [
 export default function ProductsClient({ data }: { data: ProductsData }) {
   return (
     <>
-      {/* Top viewed + clicked */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
         <div className='bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-6'>
           <h2 className='text-sm font-semibold text-[var(--fg-secondary)] uppercase tracking-wider mb-4'>
@@ -77,7 +76,6 @@ export default function ProductsClient({ data }: { data: ProductsData }) {
         </div>
       </div>
 
-      {/* CTR Table */}
       <div className='bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-6'>
         <h2 className='text-sm font-semibold text-[var(--fg-secondary)] uppercase tracking-wider mb-4'>
           Product Performance — Views vs Clicks
