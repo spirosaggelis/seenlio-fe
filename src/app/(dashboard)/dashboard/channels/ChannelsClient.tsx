@@ -523,7 +523,12 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
         `?client_id=${encodeURIComponent(appId)}` +
         `&redirect_uri=${encodeURIComponent(redirectUri)}` +
         `&response_type=code` +
-        `&scope=${encodeURIComponent('instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement')}` +
+        // business_management is needed because most Pages today are owned by
+        // a Meta Business — without it, /me/accounts returns an empty list and
+        // we can't reach /me/businesses → owned_pages either. The dialog will
+        // also show "Manage your business" which is granted automatically when
+        // the user is a Business Admin.
+        `&scope=${encodeURIComponent('instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,business_management')}` +
         `&state=${encodeURIComponent(account.id)}`;
       window.location.href = authUrl;
     }

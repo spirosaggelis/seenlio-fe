@@ -8,13 +8,16 @@ import { NextRequest, NextResponse } from 'next/server';
  * 2. Meta redirects here with ?code=XXX&state=ACCOUNT_ID
  * 3. Exchange code for short-lived user token
  * 4. Exchange for long-lived token (60-day expiry)
- * 5. List Facebook Pages the user manages
+ * 5. Discover Pages the user can access. We query BOTH /me/accounts (direct
+ *    user-managed pages) AND /me/businesses → owned_pages/client_pages
+ *    (Pages owned by a Meta Business — the common case in 2024+). Without
+ *    the business path, modern business-owned Pages return empty here.
  * 6. For each Page, find the connected Instagram Business/Creator account
  * 7. Save { access_token, ig_user_id, page_id } to Strapi platform account
  * 8. Redirect back to dashboard/channels
  *
  * Required Meta app permissions: instagram_basic, instagram_content_publish,
- * pages_show_list, pages_read_engagement
+ * pages_show_list, pages_read_engagement, business_management
  */
 
 const GRAPH_BASE = 'https://graph.facebook.com/v21.0';
@@ -102,24 +105,77 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const tokenExpiresIn: number = longTokenData.expires_in || 60 * 24 * 60 * 60;
     const tokenExpiresAt = new Date(Date.now() + tokenExpiresIn * 1000).toISOString();
 
-    // Step 3: List Facebook Pages the user manages (each has a Page token)
-    const pagesData = await graphGet('/me/accounts', {
+    // Step 3: List Facebook Pages reachable through this user. We combine
+    // results from two sources because /me/accounts returns ONLY directly
+    // user-managed pages — most modern Pages are owned by a Meta Business
+    // and only show up via /me/businesses → {business-id}/{owned,client}_pages.
+    type Page = { id: string; name: string; access_token: string };
+    const pageMap = new Map<string, Page>();
+    const trace: Record<string, unknown> = {};
+
+    // 3a. Direct user-managed pages
+    const directPages = await graphGet('/me/accounts', {
       access_token: userToken,
       fields: 'id,name,access_token',
+      limit: '100',
     });
-
-    if (pagesData.error) {
-      dashboardUrl.searchParams.set('error', pagesData.error.message || 'Failed to fetch Pages');
-      return NextResponse.redirect(dashboardUrl);
+    trace.me_accounts = directPages.error
+      ? { error: directPages.error }
+      : { count: (directPages.data || []).length };
+    for (const p of directPages.data || []) {
+      if (p?.id && p?.access_token) pageMap.set(p.id, p);
     }
 
-    const pages: Array<{ id: string; name: string; access_token: string }> =
-      pagesData.data || [];
+    // 3b. Pages reachable via Businesses the user admins (requires
+    // business_management scope; covers the common case where Pages are
+    // owned by a Meta Business rather than the user directly).
+    const businessesRes = await graphGet('/me/businesses', {
+      access_token: userToken,
+      fields: 'id,name',
+      limit: '100',
+    });
+    const businesses: Array<{ id: string; name: string }> =
+      businessesRes.data || [];
+    trace.me_businesses = businessesRes.error
+      ? { error: businessesRes.error }
+      : { count: businesses.length, ids: businesses.map((b) => b.id) };
+
+    for (const biz of businesses) {
+      for (const kind of ['owned_pages', 'client_pages'] as const) {
+        const bizPagesRes = await graphGet(`/${biz.id}/${kind}`, {
+          access_token: userToken,
+          fields: 'id,name,access_token',
+          limit: '100',
+        });
+        const bizPages: Page[] = bizPagesRes.data || [];
+        trace[`${biz.id}_${kind}`] = bizPagesRes.error
+          ? { error: bizPagesRes.error }
+          : { count: bizPages.length };
+        for (const p of bizPages) {
+          if (!p?.id) continue;
+          // Prefer entries with a page access_token (some business endpoints
+          // omit it for client pages — fall back to the user token in that case).
+          const existing = pageMap.get(p.id);
+          if (!existing || (!existing.access_token && p.access_token)) {
+            pageMap.set(p.id, {
+              id: p.id,
+              name: p.name,
+              access_token: p.access_token || userToken,
+            });
+          }
+        }
+      }
+    }
+
+    const pages = Array.from(pageMap.values());
 
     if (pages.length === 0) {
+      // Surface the actual Graph responses so we can see WHY (missing scope,
+      // user has no business, business has no pages, etc.) instead of guessing.
+      const detail = encodeURIComponent(JSON.stringify(trace).slice(0, 800));
       dashboardUrl.searchParams.set(
         'error',
-        'No Facebook Pages found. Instagram must be connected to a Facebook Page as a Business or Creator account.',
+        `No Facebook Pages found. Instagram must be connected to a Facebook Page as a Business or Creator account. detail=${detail}`,
       );
       return NextResponse.redirect(dashboardUrl);
     }
@@ -128,11 +184,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     let igUserId = '';
     let pageAccessToken = '';
     let pageName = '';
+    const igTrace: Array<Record<string, unknown>> = [];
 
     for (const page of pages) {
       const igData = await graphGet(`/${page.id}`, {
         fields: 'instagram_business_account',
         access_token: page.access_token,
+      });
+      igTrace.push({
+        page_id: page.id,
+        page_name: page.name,
+        ig_id: igData?.instagram_business_account?.id || null,
+        error: igData?.error || null,
       });
 
       if (igData.instagram_business_account?.id) {
@@ -144,9 +207,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
 
     if (!igUserId) {
+      const detail = encodeURIComponent(JSON.stringify(igTrace).slice(0, 800));
       dashboardUrl.searchParams.set(
         'error',
-        'No Instagram Business or Creator account found connected to your Facebook Pages. Connect Instagram to a Facebook Page first.',
+        `No Instagram Business or Creator account found connected to your Facebook Pages. Connect Instagram to a Facebook Page first. detail=${detail}`,
       );
       return NextResponse.redirect(dashboardUrl);
     }
