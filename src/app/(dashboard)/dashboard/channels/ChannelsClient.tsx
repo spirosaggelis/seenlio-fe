@@ -528,7 +528,11 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
         // we can't reach /me/businesses → owned_pages either. The dialog will
         // also show "Manage your business" which is granted automatically when
         // the user is a Business Admin.
-        `&scope=${encodeURIComponent('instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,business_management')}` +
+        // instagram_manage_comments is needed for the deferred Phase 4b
+        // product-link comment under each Reel — without it Meta returns
+        // "(#10) Application does not have permission for this action" on
+        // POST /{ig-media-id}/comments.
+        `&scope=${encodeURIComponent('instagram_basic,instagram_content_publish,instagram_manage_comments,pages_show_list,pages_read_engagement,business_management')}` +
         `&state=${encodeURIComponent(account.id)}`;
       window.location.href = authUrl;
     }
