@@ -308,9 +308,13 @@ export default async function ProductPage({ params }: PageProps) {
 
   const productVideo = pickProductVideo(product.videos);
   const currentPrice = product.pricePoints?.[0];
-  const primaryImage =
+  const rawPrimaryImage =
     product.media?.find((m) => m.isPrimary && m.type !== "video")?.url ||
     product.media?.find((m) => m.type !== "video")?.url;
+  const primaryImage = rawPrimaryImage ? proxyImage(rawPrimaryImage) : undefined;
+  const galleryMedia = (product.media || []).map((m) =>
+    m.type === "video" ? m : { ...m, url: proxyImage(m.url) },
+  );
   const activeLinks =
     product.affiliateLinks?.filter((l) => l.isActive !== false) || [];
 
@@ -444,7 +448,7 @@ export default async function ProductPage({ params }: PageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
           {/* Image gallery */}
           <ProductImageGallery
-            media={product.media || []}
+            media={galleryMedia}
             productName={product.name}
           />
 

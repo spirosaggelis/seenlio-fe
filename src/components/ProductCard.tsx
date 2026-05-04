@@ -5,6 +5,7 @@ import PriceDisplay from './PriceDisplay';
 import StarRating from './StarRating';
 import ListingCtaButton from './ListingCtaButton';
 import PlatformBadge from './PlatformBadge';
+import { proxyImage } from '@/lib/imageProxy';
 
 interface PricePoint {
   price: number;
@@ -57,7 +58,7 @@ export default function ProductCard({
       <div className='overflow-hidden bg-linear-to-br from-purple-900/20 via-gray-900 to-cyan-900/20' style={{ paddingBottom: '75%', position: 'relative' }}>
         {imageUrl ? (
           <Image
-            src={imageUrl}
+            src={proxyImage(imageUrl)}
             alt={name}
             fill
             sizes='(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw'

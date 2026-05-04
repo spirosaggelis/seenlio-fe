@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'images-na.ssl-images-amazon.com' },
       { protocol: 'https', hostname: '*.aliexpress-media.com' },
       { protocol: 'https', hostname: '*.kwcdn.com' },
+      { protocol: 'https', hostname: 'cdn.seenlio.com' },
       { protocol: 'http', hostname: 'localhost' },
     ],
   },
