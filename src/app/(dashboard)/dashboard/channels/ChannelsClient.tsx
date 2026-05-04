@@ -30,13 +30,14 @@ interface Props {
   categories: { id: string; name: string }[];
 }
 
-const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'pinterest'] as const;
+const PLATFORMS = ['youtube', 'tiktok', 'instagram', 'pinterest', 'facebook'] as const;
 
 const PLATFORM_COLORS: Record<string, string> = {
   youtube: 'bg-red-500/20 text-red-300 border-red-500/30',
   tiktok: 'bg-pink-500/20 text-pink-300 border-pink-500/30',
   instagram: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
   pinterest: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+  facebook: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
 };
 
 const PLATFORM_ICONS: Record<string, string> = {
@@ -44,6 +45,7 @@ const PLATFORM_ICONS: Record<string, string> = {
   tiktok: 'TT',
   instagram: 'IG',
   pinterest: 'PT',
+  facebook: 'FB',
 };
 
 function hasCredentials(account: PlatformAccount): boolean {
@@ -533,6 +535,21 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
         // "(#10) Application does not have permission for this action" on
         // POST /{ig-media-id}/comments.
         `&scope=${encodeURIComponent('instagram_basic,instagram_content_publish,instagram_manage_comments,pages_show_list,pages_read_engagement,business_management')}` +
+        `&state=${encodeURIComponent(account.id)}`;
+      window.location.href = authUrl;
+    } else if (account.platform === 'facebook') {
+      const appId =
+        process.env.NEXT_PUBLIC_FACEBOOK_APP_ID ||
+        prompt('Enter your Facebook App ID:');
+      if (!appId) return;
+
+      const redirectUri = `${currentUrl}/api/auth/facebook/callback`;
+      const authUrl =
+        `https://www.facebook.com/v21.0/dialog/oauth` +
+        `?client_id=${encodeURIComponent(appId)}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent('pages_show_list,pages_read_engagement,pages_manage_posts,business_management')}` +
         `&state=${encodeURIComponent(account.id)}`;
       window.location.href = authUrl;
     }
