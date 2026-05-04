@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProduct, getProducts, getSettings, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
+import { proxyImage } from "@/lib/imageProxy";
 import TrendBadge from "@/components/TrendBadge";
 import PriceDisplay from "@/components/PriceDisplay";
 import StarRating from "@/components/StarRating";
@@ -251,9 +252,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const description =
     rawDesc.length > 155 ? rawDesc.slice(0, 152).trimEnd() + "…" : rawDesc;
 
-  const ogImage =
+  const rawOgImage =
     product.media?.find((m) => m.isPrimary && m.type !== "video")?.url ||
     product.media?.find((m) => m.type !== "video")?.url;
+  const ogImage = rawOgImage ? proxyImage(rawOgImage) : undefined;
 
   return {
     title,
@@ -378,7 +380,7 @@ export default async function ProductPage({ params }: PageProps) {
     description: product.shortDescription || product.description || product.name,
     image: product.media
       ?.filter((m) => m.type !== "video" && m.url)
-      .map((m) => m.url) || [],
+      .map((m) => proxyImage(m.url)) || [],
     sku: product.productCode,
     url: `${siteUrl}/products/${product.slug}`,
     ...(product.rating != null && product.rating > 0
