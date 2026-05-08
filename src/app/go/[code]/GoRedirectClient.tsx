@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { trackAffiliateClick } from '@/lib/analytics';
 
 const PLATFORM_LABELS: Record<string, string> = {
   amazon: 'Amazon',
@@ -16,14 +15,12 @@ const STEPS = ['Finding best deal', 'Checking your region', 'Preparing link'];
 
 interface GoRedirectClientProps {
   destinationUrl: string;
-  productCode: string;
   platform: string;
   productName?: string;
 }
 
 export default function GoRedirectClient({
   destinationUrl,
-  productCode,
   platform,
   productName,
 }: GoRedirectClientProps) {
@@ -32,9 +29,9 @@ export default function GoRedirectClient({
   const platformLabel = PLATFORM_LABELS[platform] || PLATFORM_LABELS.other;
 
   useEffect(() => {
-    // Fire GTM immediately — runs client-side so window.dataLayer is available
-    trackAffiliateClick(productCode, platform, destinationUrl, 'short_url');
-
+    // Analytics for /go/* is fired server-side via GA4 Measurement Protocol
+    // (see page.tsx). GTM is disabled on /go/* in GtmScript.tsx to avoid
+    // duplicate page_view events.
     const t1 = setTimeout(() => setStep(1), 700);
     const t2 = setTimeout(() => setStep(2), 1400);
     const t3 = setTimeout(() => setStep(3), 2000);
@@ -48,7 +45,7 @@ export default function GoRedirectClient({
       clearTimeout(t3);
       clearTimeout(redirect);
     };
-  }, [destinationUrl, productCode, platform]);
+  }, [destinationUrl]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center relative overflow-hidden">

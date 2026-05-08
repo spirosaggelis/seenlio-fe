@@ -1,7 +1,13 @@
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
 import type { Metadata } from 'next';
 import GoRedirectClient from './GoRedirectClient';
+import {
+  sendGA4Events,
+  parseGaClientId,
+  parseGaSessionId,
+  generateClientId,
+} from '@/lib/ga4-server';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -274,6 +280,7 @@ export default async function GoPage({
   const productCode = code.toUpperCase();
 
   const reqHeaders = await headers();
+  const cookieStore = await cookies();
 
   const [product, patterns] = await Promise.all([
     lookupProduct(productCode),
@@ -299,10 +306,60 @@ export default async function GoPage({
   const destinationUrl = await buildDestinationUrl(product, patterns, country);
   console.log(`[go] destinationUrl=${destinationUrl}`);
 
+  // Server-side GA4 tracking — fires reliably regardless of redirect timing,
+  // ad blockers, or in-app browsers. Client-side GTM is disabled on /go/* in
+  // GtmScript.tsx, so this is the single source of truth for /go events.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
+  const pageLocation = `${siteUrl}/go/${product.productCode}`;
+  const referrer = reqHeaders.get('referer') || '';
+  const userAgent = reqHeaders.get('user-agent') || '';
+  const xff = reqHeaders.get('x-forwarded-for') || '';
+  const ipAddress = xff.split(',')[0]?.trim() || '';
+
+  const gaCookie = cookieStore.get('_ga')?.value;
+  let clientId = parseGaClientId(gaCookie);
+  if (!clientId) clientId = generateClientId();
+
+  // Find any GA4 container session cookie (`_ga_<container>`) and extract session_id.
+  let sessionId: string | undefined;
+  for (const c of cookieStore.getAll()) {
+    if (c.name.startsWith('_ga_')) {
+      const sid = parseGaSessionId(c.value);
+      if (sid) {
+        sessionId = sid;
+        break;
+      }
+    }
+  }
+
+  // Fire-and-forget — do not await; the redirect interstitial renders immediately.
+  void sendGA4Events(
+    [
+      {
+        name: 'page_view',
+        params: {
+          page_location: pageLocation,
+          page_title: `Redirect — ${product.productCode}`,
+          page_referrer: referrer,
+        },
+      },
+      {
+        name: 'affiliate_click',
+        params: {
+          product_code: product.productCode,
+          platform: product.sourcePlatform || 'other',
+          destination_url: destinationUrl,
+          click_source: 'short_url',
+          country,
+        },
+      },
+    ],
+    { clientId, sessionId, userAgent, ipAddress },
+  );
+
   return (
     <GoRedirectClient
       destinationUrl={destinationUrl}
-      productCode={product.productCode}
       platform={product.sourcePlatform || 'other'}
       productName={product.name}
     />
