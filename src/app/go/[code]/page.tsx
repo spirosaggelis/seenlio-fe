@@ -9,6 +9,7 @@ import {
   generateClientId,
 } from '@/lib/ga4-server';
 import { resolveTrafficSource } from '@/lib/traffic-source';
+import { parseDevice, readGeoHeaders } from '@/lib/request-enrichment';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -24,20 +25,61 @@ const STRAPI_TOKEN = process.env.STRAPI_API_TOKEN || '';
 
 // EU countries that map directly to one of the 5 affiliate stores
 const COUNTRY_TO_DOMAIN: Record<string, string> = {
-  DE: 'amazon.de', AT: 'amazon.de', CH: 'amazon.de',
-  FR: 'amazon.fr', BE: 'amazon.fr', LU: 'amazon.fr',
+  DE: 'amazon.de',
+  AT: 'amazon.de',
+  CH: 'amazon.de',
+  FR: 'amazon.fr',
+  BE: 'amazon.fr',
+  LU: 'amazon.fr',
   IT: 'amazon.it',
-  ES: 'amazon.es', PT: 'amazon.es',
-  GB: 'amazon.co.uk', IE: 'amazon.co.uk',
+  ES: 'amazon.es',
+  PT: 'amazon.es',
+  GB: 'amazon.co.uk',
+  IE: 'amazon.co.uk',
 };
 
 // All European country codes — determines whether to run the EU affiliate fallback chain
 const EU_COUNTRIES = new Set([
-  'DE', 'AT', 'CH', 'FR', 'BE', 'LU', 'IT', 'ES', 'PT',
-  'GB', 'IE', 'NL', 'SE', 'PL', 'DK', 'FI', 'NO',
-  'GR', 'CY', 'MT', 'CZ', 'SK', 'HU', 'RO', 'BG',
-  'HR', 'SI', 'LT', 'LV', 'EE', 'IS', 'AL', 'RS',
-  'BA', 'ME', 'MK', 'XK', 'MD', 'UA', 'BY',
+  'DE',
+  'AT',
+  'CH',
+  'FR',
+  'BE',
+  'LU',
+  'IT',
+  'ES',
+  'PT',
+  'GB',
+  'IE',
+  'NL',
+  'SE',
+  'PL',
+  'DK',
+  'FI',
+  'NO',
+  'GR',
+  'CY',
+  'MT',
+  'CZ',
+  'SK',
+  'HU',
+  'RO',
+  'BG',
+  'HR',
+  'SI',
+  'LT',
+  'LV',
+  'EE',
+  'IS',
+  'AL',
+  'RS',
+  'BA',
+  'ME',
+  'MK',
+  'XK',
+  'MD',
+  'UA',
+  'BY',
 ]);
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -292,14 +334,8 @@ export default async function GoPage({
     redirect(`/products?search=${encodeURIComponent(productCode)}`);
   }
 
-  const country = (
-    sp['country'] ||
-    reqHeaders.get('x-vercel-ip-country') ||
-    reqHeaders.get('cf-ipcountry') ||
-    'US'
-  )
-    .trim()
-    .toUpperCase();
+  const geo = readGeoHeaders((n) => reqHeaders.get(n));
+  const country = sp['country']?.trim().toUpperCase() || geo.country || '';
 
   console.log(
     `[go] product=${product.productCode} platform=${product.sourcePlatform} country=${country} patterns=${patterns.length}`,
@@ -348,20 +384,33 @@ export default async function GoPage({
 
   // Resolve traffic source from referer + query params (utm_*, fbclid, gclid).
   const traffic = resolveTrafficSource(referrer, sp);
+  const device = parseDevice(userAgent);
 
+  // Shared params attached to every /go event so they are queryable as custom
+  // dimensions in GA4 (geo.* and device.* are NOT auto-filled for MP requests).
   const sharedAttribution = {
     source: traffic.source,
     medium: traffic.medium,
     campaign: traffic.campaign,
     term: traffic.term,
     content: traffic.content,
+    country,
+    region: geo.region,
+    city: geo.city,
+    device_category: device.category,
+    browser: device.browser,
+    os: device.os,
   };
 
   const events = [];
   if (isNewSession) {
     events.push({
       name: 'session_start',
-      params: { ...sharedAttribution, page_location: pageLocation, page_referrer: referrer },
+      params: {
+        ...sharedAttribution,
+        page_location: pageLocation,
+        page_referrer: referrer,
+      },
     });
   }
   events.push({
@@ -380,7 +429,6 @@ export default async function GoPage({
       platform: product.sourcePlatform || 'other',
       destination_url: destinationUrl,
       click_source: 'short_url',
-      country,
       ...sharedAttribution,
     },
   });
