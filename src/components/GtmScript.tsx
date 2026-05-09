@@ -8,10 +8,8 @@ const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 
 /**
  * Renders Google Tag Manager scripts only on public pages.
- * Dashboard routes (/dashboard/**) and affiliate redirect routes
- * (/go/**) are excluded — admin traffic is irrelevant, and /go pages
- * are tracked server-side via GA4 Measurement Protocol to avoid
- * duplicate page_view events and to survive the outbound redirect.
+ * Dashboard routes (/dashboard/**) are excluded to keep
+ * admin traffic out of analytics.
  */
 export default function GtmScript() {
   const pathname = usePathname();
@@ -20,7 +18,6 @@ export default function GtmScript() {
   useEffect(() => {
     if (!GTM_ID) return;
     if (pathname.startsWith('/dashboard')) return;
-    if (pathname.startsWith('/go/')) return;
     if (isAnalyticsDisabled()) return;
     if (injected.current) return;
     injected.current = true;

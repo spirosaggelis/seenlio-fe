@@ -1,15 +1,7 @@
 import { redirect } from 'next/navigation';
-import { headers, cookies } from 'next/headers';
+import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import GoRedirectClient from './GoRedirectClient';
-import {
-  sendGA4Events,
-  parseGaClientId,
-  parseGaSessionId,
-  generateClientId,
-} from '@/lib/ga4-server';
-import { resolveTrafficSource } from '@/lib/traffic-source';
-import { parseDevice, readGeoHeaders } from '@/lib/request-enrichment';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -94,6 +86,18 @@ interface AffiliatePattern {
   isActive?: boolean;
 }
 
+interface PricePoint {
+  price: number;
+  currency?: string;
+  originalPrice?: number;
+}
+
+interface MediaItem {
+  url?: string;
+  type?: 'image' | 'video';
+  isPrimary?: boolean;
+}
+
 interface Product {
   id: number;
   productCode: string;
@@ -101,21 +105,30 @@ interface Product {
   sourceUrl?: string;
   sourcePlatform?: string;
   affiliateLinks?: Array<{ platform: string; url: string; isActive?: boolean }>;
+  media?: MediaItem[];
+  pricePoints?: PricePoint[];
 }
 
 // ── Strapi helpers ─────────────────────────────────────────────────────────
 
 async function lookupProduct(code: string): Promise<Product | null> {
   try {
-    const res = await fetch(
-      `${STRAPI_URL}/api/products?filters[productCode][$eq]=${encodeURIComponent(code)}&filters[productStatus][$eq]=published&populate[0]=affiliateLinks&fields[0]=id&fields[1]=productCode&fields[2]=sourceUrl&fields[3]=sourcePlatform&fields[4]=name`,
-      {
-        headers: STRAPI_TOKEN
-          ? { Authorization: `Bearer ${STRAPI_TOKEN}` }
-          : {},
-        next: { revalidate: 60 },
-      },
-    );
+    const params = [
+      `filters[productCode][$eq]=${encodeURIComponent(code)}`,
+      `filters[productStatus][$eq]=published`,
+      `populate[affiliateLinks]=true`,
+      `populate[media]=true`,
+      `populate[pricePoints]=true`,
+      `fields[0]=id`,
+      `fields[1]=productCode`,
+      `fields[2]=sourceUrl`,
+      `fields[3]=sourcePlatform`,
+      `fields[4]=name`,
+    ].join('&');
+    const res = await fetch(`${STRAPI_URL}/api/products?${params}`, {
+      headers: STRAPI_TOKEN ? { Authorization: `Bearer ${STRAPI_TOKEN}` } : {},
+      next: { revalidate: 60 },
+    });
     if (!res.ok) return null;
     const json = await res.json();
     return json?.data?.[0] ?? null;
@@ -323,7 +336,6 @@ export default async function GoPage({
   const productCode = code.toUpperCase();
 
   const reqHeaders = await headers();
-  const cookieStore = await cookies();
 
   const [product, patterns] = await Promise.all([
     lookupProduct(productCode),
@@ -334,8 +346,14 @@ export default async function GoPage({
     redirect(`/products?search=${encodeURIComponent(productCode)}`);
   }
 
-  const geo = readGeoHeaders((n) => reqHeaders.get(n));
-  const country = sp['country']?.trim().toUpperCase() || geo.country || '';
+  const country = (
+    sp['country'] ||
+    reqHeaders.get('x-vercel-ip-country') ||
+    reqHeaders.get('cf-ipcountry') ||
+    'US'
+  )
+    .trim()
+    .toUpperCase();
 
   console.log(
     `[go] product=${product.productCode} platform=${product.sourcePlatform} country=${country} patterns=${patterns.length}`,
@@ -343,104 +361,26 @@ export default async function GoPage({
   const destinationUrl = await buildDestinationUrl(product, patterns, country);
   console.log(`[go] destinationUrl=${destinationUrl}`);
 
-  // Server-side GA4 tracking — fires reliably regardless of redirect timing,
-  // ad blockers, or in-app browsers. Client-side GTM is disabled on /go/* in
-  // GtmScript.tsx, so this is the single source of truth for /go events.
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
-  const pageLocation = `${siteUrl}/go/${product.productCode}`;
-  const referrer = reqHeaders.get('referer') || '';
-  const userAgent = reqHeaders.get('user-agent') || '';
-  const xff = reqHeaders.get('x-forwarded-for') || '';
-  const ipAddress = xff.split(',')[0]?.trim() || '';
+  // Pick primary image (first non-video; isPrimary preferred).
+  const primaryImage =
+    product.media?.find((m) => m.isPrimary && m.type !== 'video')?.url ||
+    product.media?.find((m) => m.type !== 'video')?.url ||
+    null;
 
-  // client_id: prefer existing GA `_ga` cookie (links the same user across the
-  // site), then our persistent fallback set by middleware (`seenlio_cid`),
-  // then a fresh random id as last resort.
-  const gaCookie = cookieStore.get('_ga')?.value;
-  const seenlioCid = cookieStore.get('seenlio_cid')?.value;
-  const clientId =
-    parseGaClientId(gaCookie) || seenlioCid || generateClientId();
-
-  // session_id: prefer the GA4 session cookie (`_ga_<container>`); fall back
-  // to our rolling 30-min session cookie set by middleware.
-  let sessionId: string | undefined;
-  for (const c of cookieStore.getAll()) {
-    if (c.name.startsWith('_ga_')) {
-      const sid = parseGaSessionId(c.value);
-      if (sid) {
-        sessionId = sid;
-        break;
-      }
-    }
-  }
-  const seenlioSid = cookieStore.get('seenlio_sid')?.value;
-  if (!sessionId && seenlioSid) sessionId = seenlioSid;
-
-  // A "new session" for our purposes = no `_ga_*` AND the seenlio_sid cookie
-  // wasn't on the request (middleware just minted it). We detect the latter
-  // by absence: if the request came in without seenlio_sid, this is a session
-  // start. We need to fire `session_start` so GA4 counts it as a real session.
-  const isNewSession = !sessionId || (!gaCookie && !seenlioSid);
-
-  // Resolve traffic source from referer + query params (utm_*, fbclid, gclid).
-  const traffic = resolveTrafficSource(referrer, sp);
-  const device = parseDevice(userAgent);
-
-  // Shared params attached to every /go event so they are queryable as custom
-  // dimensions in GA4 (geo.* and device.* are NOT auto-filled for MP requests).
-  const sharedAttribution = {
-    source: traffic.source,
-    medium: traffic.medium,
-    campaign: traffic.campaign,
-    term: traffic.term,
-    content: traffic.content,
-    country,
-    region: geo.region,
-    city: geo.city,
-    device_category: device.category,
-    browser: device.browser,
-    os: device.os,
-  };
-
-  const events = [];
-  if (isNewSession) {
-    events.push({
-      name: 'session_start',
-      params: {
-        ...sharedAttribution,
-        page_location: pageLocation,
-        page_referrer: referrer,
-      },
-    });
-  }
-  events.push({
-    name: 'page_view',
-    params: {
-      page_location: pageLocation,
-      page_title: `Redirect — ${product.productCode}`,
-      page_referrer: referrer,
-      ...sharedAttribution,
-    },
-  });
-  events.push({
-    name: 'affiliate_click',
-    params: {
-      product_code: product.productCode,
-      platform: product.sourcePlatform || 'other',
-      destination_url: destinationUrl,
-      click_source: 'short_url',
-      ...sharedAttribution,
-    },
-  });
-
-  // Fire-and-forget — do not await; the redirect interstitial renders immediately.
-  void sendGA4Events(events, { clientId, sessionId, userAgent, ipAddress });
+  // Pick first price point (current price + optional originalPrice for savings %).
+  const price = product.pricePoints?.[0] || null;
 
   return (
     <GoRedirectClient
       destinationUrl={destinationUrl}
+      productCode={product.productCode}
       platform={product.sourcePlatform || 'other'}
       productName={product.name}
+      productImage={primaryImage}
+      price={price?.price ?? null}
+      originalPrice={price?.originalPrice ?? null}
+      currency={price?.currency ?? null}
+      country={country}
     />
   );
 }
