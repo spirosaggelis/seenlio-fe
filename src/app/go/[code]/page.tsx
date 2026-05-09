@@ -8,6 +8,7 @@ import {
   parseGaSessionId,
   generateClientId,
 } from '@/lib/ga4-server';
+import { resolveTrafficSource } from '@/lib/traffic-source';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -316,11 +317,16 @@ export default async function GoPage({
   const xff = reqHeaders.get('x-forwarded-for') || '';
   const ipAddress = xff.split(',')[0]?.trim() || '';
 
+  // client_id: prefer existing GA `_ga` cookie (links the same user across the
+  // site), then our persistent fallback set by middleware (`seenlio_cid`),
+  // then a fresh random id as last resort.
   const gaCookie = cookieStore.get('_ga')?.value;
-  let clientId = parseGaClientId(gaCookie);
-  if (!clientId) clientId = generateClientId();
+  const seenlioCid = cookieStore.get('seenlio_cid')?.value;
+  const clientId =
+    parseGaClientId(gaCookie) || seenlioCid || generateClientId();
 
-  // Find any GA4 container session cookie (`_ga_<container>`) and extract session_id.
+  // session_id: prefer the GA4 session cookie (`_ga_<container>`); fall back
+  // to our rolling 30-min session cookie set by middleware.
   let sessionId: string | undefined;
   for (const c of cookieStore.getAll()) {
     if (c.name.startsWith('_ga_')) {
@@ -331,31 +337,56 @@ export default async function GoPage({
       }
     }
   }
+  const seenlioSid = cookieStore.get('seenlio_sid')?.value;
+  if (!sessionId && seenlioSid) sessionId = seenlioSid;
+
+  // A "new session" for our purposes = no `_ga_*` AND the seenlio_sid cookie
+  // wasn't on the request (middleware just minted it). We detect the latter
+  // by absence: if the request came in without seenlio_sid, this is a session
+  // start. We need to fire `session_start` so GA4 counts it as a real session.
+  const isNewSession = !sessionId || (!gaCookie && !seenlioSid);
+
+  // Resolve traffic source from referer + query params (utm_*, fbclid, gclid).
+  const traffic = resolveTrafficSource(referrer, sp);
+
+  const sharedAttribution = {
+    source: traffic.source,
+    medium: traffic.medium,
+    campaign: traffic.campaign,
+    term: traffic.term,
+    content: traffic.content,
+  };
+
+  const events = [];
+  if (isNewSession) {
+    events.push({
+      name: 'session_start',
+      params: { ...sharedAttribution, page_location: pageLocation, page_referrer: referrer },
+    });
+  }
+  events.push({
+    name: 'page_view',
+    params: {
+      page_location: pageLocation,
+      page_title: `Redirect — ${product.productCode}`,
+      page_referrer: referrer,
+      ...sharedAttribution,
+    },
+  });
+  events.push({
+    name: 'affiliate_click',
+    params: {
+      product_code: product.productCode,
+      platform: product.sourcePlatform || 'other',
+      destination_url: destinationUrl,
+      click_source: 'short_url',
+      country,
+      ...sharedAttribution,
+    },
+  });
 
   // Fire-and-forget — do not await; the redirect interstitial renders immediately.
-  void sendGA4Events(
-    [
-      {
-        name: 'page_view',
-        params: {
-          page_location: pageLocation,
-          page_title: `Redirect — ${product.productCode}`,
-          page_referrer: referrer,
-        },
-      },
-      {
-        name: 'affiliate_click',
-        params: {
-          product_code: product.productCode,
-          platform: product.sourcePlatform || 'other',
-          destination_url: destinationUrl,
-          click_source: 'short_url',
-          country,
-        },
-      },
-    ],
-    { clientId, sessionId, userAgent, ipAddress },
-  );
+  void sendGA4Events(events, { clientId, sessionId, userAgent, ipAddress });
 
   return (
     <GoRedirectClient
