@@ -74,6 +74,7 @@ interface ProductData {
   sourceUrl?: string;
   sourcePlatform?: string;
   affiliateLinks?: AffiliateLink[];
+  tiktokShopId?: string;
   pricePoints?: PricePoint[];
   media?: MediaItem[];
   videos?: VideoItem[];
@@ -140,6 +141,10 @@ const PLATFORM_LABELS: Record<string, string> = {
   temu: "Temu",
   tiktok_shop: "TikTok Shop",
   other: "Store",
+};
+
+const PLATFORM_CTA_LABELS: Record<string, string> = {
+  tiktok_shop: "Shop on TikTok",
 };
 
 interface AffiliatePattern {
@@ -284,6 +289,7 @@ const platformGradients: Record<string, string> = {
   aliexpress: "from-red-500 to-red-700",
   ebay: "from-blue-500 to-blue-700",
   walmart: "from-blue-600 to-blue-800",
+  tiktok_shop: "from-pink-500 via-fuchsia-500 to-cyan-500",
   default: "from-purple-500 to-pink-600",
 };
 
@@ -292,7 +298,15 @@ const platformIcons: Record<string, string> = {
   aliexpress: "📦",
   ebay: "🏷️",
   walmart: "🏪",
+  tiktok_shop: "🛍️",
   default: "🔗",
+};
+
+const platformPriority: Record<string, number> = {
+  tiktok_shop: 0,
+  amazon: 1,
+  aliexpress: 2,
+  temu: 3,
 };
 
 export default async function ProductPage({ params }: PageProps) {
@@ -326,16 +340,22 @@ export default async function ProductPage({ params }: PageProps) {
     gradient: string;
     icon: string;
   }> = activeLinks.length > 0
-    ? activeLinks.map((link) => {
-        const platform = link.platform.toLowerCase();
-        return {
-          platform,
-          href: buildBuyHref(link.url, platform, product.productCode, affiliatePatterns),
-          label: `Shop on ${PLATFORM_LABELS[platform] ?? link.platform}`,
-          gradient: platformGradients[platform] ?? platformGradients.default,
-          icon: platformIcons[platform] ?? platformIcons.default,
-        };
-      })
+    ? activeLinks
+        .map((link) => {
+          const platform = link.platform.toLowerCase();
+          return {
+            platform,
+            href: buildBuyHref(link.url, platform, product.productCode, affiliatePatterns),
+            label: PLATFORM_CTA_LABELS[platform] ?? `Shop on ${PLATFORM_LABELS[platform] ?? link.platform}`,
+            gradient: platformGradients[platform] ?? platformGradients.default,
+            icon: platformIcons[platform] ?? platformIcons.default,
+          };
+        })
+        .sort(
+          (a, b) =>
+            (platformPriority[a.platform] ?? 99) -
+            (platformPriority[b.platform] ?? 99),
+        )
     : product.sourceUrl
     ? (() => {
         const platform = (product.sourcePlatform ?? "other").toLowerCase();

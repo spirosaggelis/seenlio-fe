@@ -285,6 +285,21 @@ ORDER BY event_date
 `.trim();
 }
 
+/** Daily affiliate clicks broken out by platform — used to compare TikTok Shop vs outbound. */
+export function affiliateTimeseriesByPlatformSql(): string {
+  return `
+SELECT
+  event_date,
+  COALESCE(NULLIF(TRIM(${PARAM_PLATFORM}), ''), 'unknown') AS platform,
+  COUNT(*) AS value
+FROM ${table()}
+WHERE event_date BETWEEN @start_date AND @end_date
+  AND event_name = 'affiliate_click'
+GROUP BY event_date, platform
+ORDER BY event_date, value DESC
+`.trim();
+}
+
 export function productViewsByCodeSql(): string {
   return `
 SELECT
