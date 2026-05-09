@@ -32,7 +32,7 @@ const COUNTRY_NAMES: Record<string, string> = {
 const STEPS = [
   { label: 'Finding best deal', duration: 1000 },
   { label: 'Checking your region', duration: 1000 },
-  { label: 'Applying affiliate discount', duration: 1000 },
+  { label: 'Selecting regional store', duration: 1000 },
   { label: 'Preparing secure link', duration: 1000 },
 ];
 
