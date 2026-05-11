@@ -13,12 +13,14 @@ const COUNTRY_TO_DOMAIN: Record<string, string> = {
   // Southern Europe
   IT: "amazon.it",
   ES: "amazon.es",
+  PT: "amazon.es",
   // Northern / Eastern Europe
   NL: "amazon.nl",
   SE: "amazon.se",
   PL: "amazon.pl",
-  // UK
+  // UK / Ireland
   GB: "amazon.co.uk",
+  IE: "amazon.co.uk",
   // Asia-Pacific
   JP: "amazon.co.jp",
   AU: "amazon.com.au",
@@ -34,6 +36,23 @@ const COUNTRY_TO_DOMAIN: Record<string, string> = {
   EG: "amazon.eg",
   TR: "amazon.com.tr",
 };
+
+// All European country codes — determines whether to run the EU fallback chain
+const EU_COUNTRIES = new Set([
+  "DE", "AT", "CH", "FR", "BE", "LU", "IT", "ES", "PT", "GB", "IE",
+  "NL", "SE", "PL", "DK", "FI", "NO", "GR", "CY", "MT", "CZ", "SK",
+  "HU", "RO", "BG", "HR", "SI", "LT", "LV", "EE", "IS", "AL", "RS",
+  "BA", "ME", "MK", "XK", "MD", "UA", "BY",
+]);
+
+// European Amazon storefronts in fallback priority order
+const EU_DOMAINS = [
+  "amazon.de",
+  "amazon.co.uk",
+  "amazon.fr",
+  "amazon.it",
+  "amazon.es",
+];
 
 // In-memory availability cache: "{asin}:{domain}" → { available, checked }
 const availabilityCache = new Map<
@@ -109,19 +128,22 @@ async function isAvailableOnDomain(
 
   try {
     const res = await fetch(`https://www.${domain}/dp/${asin}`, {
-      method: "HEAD",
+      method: "GET",
       redirect: "manual",
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; Seenlio/1.0; +https://seenlio.com)",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept-Language": "en-US,en;q=0.9",
+        Accept: "text/html",
       },
-      signal: AbortSignal.timeout(5_000),
+      signal: AbortSignal.timeout(4_000),
     });
+    res.body?.cancel();
     const available = res.status < 400;
     availabilityCache.set(key, { available, checked: Date.now() });
     return available;
   } catch {
+    availabilityCache.set(key, { available: false, checked: Date.now() });
     return false;
   }
 }
@@ -148,29 +170,41 @@ export async function GET(request: NextRequest) {
     .trim()
     .toUpperCase();
 
-  const targetDomain = COUNTRY_TO_DOMAIN[country] ?? null;
+  const preferredDomain = COUNTRY_TO_DOMAIN[country] ?? null;
+  const { defaultTag, regionalTags } = await getAffiliateConfig();
 
-  // Build final destination URL
-  let finalDomain = "amazon.com";
+  const buildUrl = (domain: string): string => {
+    const affiliateTag = regionalTags[domain] || defaultTag;
+    const params = new URLSearchParams();
+    if (affiliateTag) params.set("tag", affiliateTag);
+    params.set("utm_source", "seenlio");
+    params.set("utm_medium", "amazon");
+    if (productCode) params.set("utm_campaign", productCode);
+    return `https://www.${domain}/dp/${asin}?${params.toString()}`;
+  };
 
-  if (targetDomain && targetDomain !== "amazon.com") {
-    const available = await isAvailableOnDomain(asin, targetDomain);
-    if (available) {
-      finalDomain = targetDomain;
+  // EU visitors: try preferred storefront first, then walk the EU fallback chain.
+  if (EU_COUNTRIES.has(country)) {
+    const checkOrder = preferredDomain
+      ? [preferredDomain, ...EU_DOMAINS.filter((d) => d !== preferredDomain)]
+      : EU_DOMAINS;
+
+    for (const domain of checkOrder) {
+      if (await isAvailableOnDomain(asin, domain)) {
+        return NextResponse.redirect(buildUrl(domain), { status: 302 });
+      }
+    }
+
+    // Nothing in the EU stocked it — fall back to amazon.com (default tag).
+    return NextResponse.redirect(buildUrl("amazon.com"), { status: 302 });
+  }
+
+  // Non-EU: check the preferred regional storefront once; default to .com.
+  if (preferredDomain && preferredDomain !== "amazon.com") {
+    if (await isAvailableOnDomain(asin, preferredDomain)) {
+      return NextResponse.redirect(buildUrl(preferredDomain), { status: 302 });
     }
   }
 
-  // Get the right affiliate tag for this domain
-  const { defaultTag, regionalTags } = await getAffiliateConfig();
-  const affiliateTag = regionalTags[finalDomain] || defaultTag;
-
-  const params = new URLSearchParams();
-  if (affiliateTag) params.set("tag", affiliateTag);
-  params.set("utm_source", "seenlio");
-  params.set("utm_medium", "amazon");
-  if (productCode) params.set("utm_campaign", productCode);
-
-  const dest = `https://www.${finalDomain}/dp/${asin}?${params.toString()}`;
-
-  return NextResponse.redirect(dest, { status: 302 });
+  return NextResponse.redirect(buildUrl("amazon.com"), { status: 302 });
 }
