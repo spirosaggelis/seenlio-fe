@@ -66,12 +66,16 @@ export async function GET(): Promise<NextResponse> {
         },
       );
 
+      const schedule = (attrs.publishingSchedule as Record<string, unknown>) || {};
+
       return {
         id: c.documentId || c.id,
         name: attrs.name,
         slug: attrs.slug,
         description: attrs.description,
         isActive: attrs.isActive,
+        persona: (schedule.persona as string) || '',
+        publishingSchedule: schedule,
         category: catData
           ? { id: (catData as Record<string, unknown>).documentId || (catData as Record<string, unknown>).id, name: (catData as Record<string, unknown>).name }
           : null,
@@ -91,17 +95,30 @@ export async function GET(): Promise<NextResponse> {
   }
 }
 
+async function readPersona(
+  channelId: string,
+): Promise<Record<string, unknown>> {
+  const res = await strapiGet(
+    `/channels/${channelId}?fields[0]=id&populate=*`,
+  );
+  const attrs = (res?.data?.attributes || res?.data || {}) as Record<string, unknown>;
+  const schedule = (attrs.publishingSchedule as Record<string, unknown>) || {};
+  return { ...schedule };
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await req.json();
-    const result = await strapiMutate('POST', '/channels', {
-      data: {
-        name: body.name,
-        description: body.description || '',
-        category: body.categoryId || undefined,
-        isActive: body.isActive ?? true,
-      },
-    });
+    const data: Record<string, unknown> = {
+      name: body.name,
+      description: body.description || '',
+      category: body.categoryId || undefined,
+      isActive: body.isActive ?? true,
+    };
+    if (body.persona !== undefined) {
+      data.publishingSchedule = { persona: body.persona };
+    }
+    const result = await strapiMutate('POST', '/channels', { data });
     return NextResponse.json(result);
   } catch (error) {
     console.error('Create channel error:', error);
@@ -120,6 +137,11 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
     if (data.description !== undefined) payload.description = data.description;
     if (data.categoryId !== undefined) payload.category = data.categoryId;
     if (data.isActive !== undefined) payload.isActive = data.isActive;
+    if (data.persona !== undefined) {
+      // Preserve other keys in the publishingSchedule JSON.
+      const existing = await readPersona(id as string);
+      payload.publishingSchedule = { ...existing, persona: data.persona };
+    }
 
     const result = await strapiMutate('PUT', `/channels/${id}`, { data: payload });
     return NextResponse.json(result);

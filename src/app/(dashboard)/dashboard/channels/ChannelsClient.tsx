@@ -21,6 +21,7 @@ interface Channel {
   slug: string;
   description: string;
   isActive: boolean;
+  persona?: string;
   category: { id: string; name: string } | null;
   platformAccounts: PlatformAccount[];
 }
@@ -83,6 +84,7 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formCategory, setFormCategory] = useState('');
+  const [formPersona, setFormPersona] = useState('');
 
   // Account form
   const [showAccountForm, setShowAccountForm] = useState<string | null>(null); // channel ID
@@ -334,6 +336,7 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
     setFormName('');
     setFormDescription('');
     setFormCategory(categories[0]?.id || '');
+    setFormPersona('');
     setShowChannelForm(true);
   }
 
@@ -342,6 +345,7 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
     setFormName(channel.name);
     setFormDescription(channel.description || '');
     setFormCategory(channel.category?.id || '');
+    setFormPersona(channel.persona || '');
     setShowChannelForm(true);
   }
 
@@ -357,6 +361,7 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
             name: formName,
             description: formDescription,
             categoryId: formCategory || undefined,
+            persona: formPersona,
           }),
         });
       } else {
@@ -367,6 +372,7 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
             name: formName,
             description: formDescription,
             categoryId: formCategory || undefined,
+            persona: formPersona,
           }),
         });
       }
@@ -752,6 +758,24 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                 className='w-full bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm text-[var(--fg-primary)] px-3 py-2'
               />
             </div>
+          </div>
+          <div className='mt-4'>
+            <label className='text-xs text-[var(--fg-muted)] block mb-1'>
+              Voice / persona for AI captions
+            </label>
+            <textarea
+              value={formPersona}
+              onChange={(e) => setFormPersona(e.target.value)}
+              placeholder={
+                'e.g. "Practical kitchen geek. No hype. 1-2 sentences. Focus on a real-life use-case. Lowercase, no exclamation marks."'
+              }
+              rows={3}
+              className='w-full bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm text-[var(--fg-primary)] px-3 py-2 resize-y'
+            />
+            <p className='text-xs text-[var(--fg-muted)] mt-1'>
+              Drives every AI-generated caption/title on this channel. Leave empty to use the
+              default voice.
+            </p>
           </div>
           <div className='flex gap-2 mt-4'>
             <button
