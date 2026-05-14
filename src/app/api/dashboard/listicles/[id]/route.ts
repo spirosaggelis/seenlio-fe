@@ -16,16 +16,16 @@ export async function GET(
 ): Promise<NextResponse> {
   const { id } = await ctx.params;
   const params = new URLSearchParams({
-    'populate[items]': '*',
+    'populate[items]': 'true',
     'populate[products][fields][0]': 'productCode',
     'populate[products][fields][1]': 'name',
     'populate[products][fields][2]': 'slug',
     'populate[products][fields][3]': 'sourcePlatform',
-    'populate[products][populate][featuredImage]': '*',
-    'populate[products][populate][pricePoints]': '*',
-    'populate[categories]': '*',
-    'populate[featuredImage]': '*',
-    'populate[seo]': '*',
+    'populate[products][populate][featuredImage]': 'true',
+    'populate[products][populate][pricePoints]': 'true',
+    'populate[categories]': 'true',
+    'populate[featuredImage]': 'true',
+    'populate[seo]': 'true',
   });
   const res = await fetch(`${STRAPI_URL}/api/listicles/${id}?${params.toString()}`, {
     headers: strapiHeaders(),

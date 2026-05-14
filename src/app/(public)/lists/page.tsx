@@ -1,6 +1,8 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { getPublishedListicles } from '@/lib/strapi';
+import { resolveProductImage } from '@/lib/productImage';
+import ListicleCollage from '@/components/ListicleCollage';
 
 export const metadata: Metadata = {
   title: 'Round-ups & gift guides',
@@ -26,7 +28,11 @@ interface ListicleListItem {
   angleHook?: string;
   priceTier?: string;
   searchIntent?: string;
-  products?: Array<{ productCode?: string }>;
+  products?: Array<{
+    productCode?: string;
+    featuredImage?: { url?: string };
+    media?: Array<{ url?: string; type?: string | null; isPrimary?: boolean | null }>;
+  }>;
   publishedOn?: string;
 }
 
@@ -80,30 +86,47 @@ export default async function ListsIndexPage() {
           <div className='grid gap-5 md:grid-cols-2 lg:grid-cols-3'>
             {lists.map((l) => {
               const tier = priceTierLabel(l.priceTier);
+              const cardImages: string[] = [];
+              const seen = new Set<string>();
+              for (const p of l.products || []) {
+                if (cardImages.length >= 4) break;
+                const url = resolveProductImage(p);
+                if (url && !seen.has(url)) {
+                  cardImages.push(url);
+                  seen.add(url);
+                }
+              }
               return (
                 <Link
                   key={l.slug}
                   href={`/lists/${l.slug}`}
-                  className='group flex flex-col rounded-xl border border-white/10 bg-white/[0.02] p-5 transition-all hover:border-purple-500/40 hover:bg-white/[0.04]'
+                  className='group flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] transition-all hover:border-purple-500/40 hover:bg-white/[0.04]'
                 >
-                  <div className='flex items-center gap-2 text-xs text-gray-500'>
-                    {tier && (
-                      <span className='rounded bg-white/5 px-2 py-0.5 text-purple-300'>
-                        {tier}
-                      </span>
+                  <ListicleCollage
+                    images={cardImages}
+                    alt={l.title || ''}
+                    variant='card'
+                  />
+                  <div className='flex flex-col p-5'>
+                    <div className='flex items-center gap-2 text-xs text-gray-500'>
+                      {tier && (
+                        <span className='rounded bg-white/5 px-2 py-0.5 text-purple-300'>
+                          {tier}
+                        </span>
+                      )}
+                      {l.products?.length ? (
+                        <span>{l.products.length} picks</span>
+                      ) : null}
+                    </div>
+                    <h2 className='mt-3 text-lg font-semibold text-white group-hover:text-purple-200'>
+                      {l.title}
+                    </h2>
+                    {l.angleHook && (
+                      <p className='mt-2 line-clamp-3 text-sm text-gray-400'>
+                        {l.angleHook}
+                      </p>
                     )}
-                    {l.products?.length ? (
-                      <span>{l.products.length} picks</span>
-                    ) : null}
                   </div>
-                  <h2 className='mt-3 text-lg font-semibold text-white group-hover:text-purple-200'>
-                    {l.title}
-                  </h2>
-                  {l.angleHook && (
-                    <p className='mt-2 line-clamp-3 text-sm text-gray-400'>
-                      {l.angleHook}
-                    </p>
-                  )}
                 </Link>
               );
             })}

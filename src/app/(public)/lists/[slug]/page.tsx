@@ -8,7 +8,11 @@ import {
   getPublishedListicles,
 } from '@/lib/strapi';
 import { proxyImage } from '@/lib/imageProxy';
+import { resolveProductImage } from '@/lib/productImage';
 import PlatformBadge from '@/components/PlatformBadge';
+import ListicleCollage from '@/components/ListicleCollage';
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
 
 export const revalidate = 600;
 
@@ -34,6 +38,7 @@ interface ListicleProduct {
   shortDescription?: string;
   pricePoints?: Array<{ price: number; currency?: string }>;
   featuredImage?: { url?: string; formats?: Record<string, { url?: string }> };
+  media?: Array<{ url?: string; type?: string | null; isPrimary?: boolean | null }>;
 }
 
 interface FullListicle {
@@ -114,8 +119,7 @@ export async function generateStaticParams() {
 }
 
 function firstImage(product: ListicleProduct): string | undefined {
-  if (product.featuredImage?.url) return product.featuredImage.url;
-  return undefined;
+  return resolveProductImage(product);
 }
 
 function priceOf(product: ListicleProduct): number | undefined {
@@ -148,24 +152,65 @@ export default async function ListiclePage({ params }: PageProps) {
     if (p.productCode) productByCode[p.productCode] = p;
   }
 
-  // Render items in author-defined order; fall back to product order if items
-  // is empty (e.g. an old listicle published before article generation).
-  const items: ListicleItem[] =
-    listicle.items && listicle.items.length > 0
-      ? [...listicle.items].sort(
-          (a, b) => (a.position ?? 99) - (b.position ?? 99),
-        )
-      : (listicle.products || []).map((p, i) => ({
-          position: i + 1,
-          productCode: p.productCode,
-          productName: p.name,
-          headline: p.name,
-          commentary: p.shortDescription || '',
-        }));
+  // The products relation is the source of truth — every related product
+  // must appear in the article. `items` (from the LLM writer) provides
+  // editorial overlay: headline, commentary, tag, ordering. When the writer
+  // skipped a product, fall back to its shortDescription so the relation
+  // and the rendered list stay in agreement (no silent drops).
+  const itemByCode: Record<string, ListicleItem> = {};
+  for (const it of listicle.items || []) {
+    if (it.productCode) itemByCode[it.productCode] = it;
+  }
+
+  const orderedProducts = [...(listicle.products || [])].sort((a, b) => {
+    const ai = itemByCode[a.productCode || '']?.position ?? 999;
+    const bi = itemByCode[b.productCode || '']?.position ?? 999;
+    return ai - bi;
+  });
+
+  const items: ListicleItem[] = orderedProducts.map((p, i) => {
+    const overlay = itemByCode[p.productCode || ''];
+    return {
+      position: i + 1,
+      productCode: p.productCode,
+      productName: p.name,
+      headline: overlay?.headline || p.name,
+      commentary: overlay?.commentary || p.shortDescription || '',
+      tag: overlay?.tag,
+    };
+  });
 
   const related = (await getRelatedListicles(slug, listicle.priceTier)) as RelatedListicle[];
 
-  // ItemList structured data — helps Google understand the round-up shape
+  // Collect product imagery for the hero collage — up to 4 picks, ordered to
+  // match the listicle item order so the hero reflects the lead products.
+  const heroImages: string[] = [];
+  const seenImages = new Set<string>();
+  for (const it of items) {
+    if (heroImages.length >= 4) break;
+    const p = productByCode[it.productCode || ''];
+    if (!p) continue;
+    const url = resolveProductImage(p);
+    if (url && !seenImages.has(url)) {
+      heroImages.push(url);
+      seenImages.add(url);
+    }
+  }
+  const ogImage = heroImages[0]
+    ? proxyImage(heroImages[0])
+    : listicle.featuredImage?.url
+    ? proxyImage(listicle.featuredImage.url)
+    : `${SITE_URL}/logo.png`;
+
+  const canonicalUrl =
+    listicle.seo?.canonicalUrl?.startsWith('http')
+      ? listicle.seo.canonicalUrl
+      : `${SITE_URL}/lists/${slug}`;
+
+  const publishedIso = listicle.publishedOn || listicle.generatedAt;
+  const modifiedIso = listicle.generatedAt || listicle.publishedOn;
+
+  // 1. ItemList — tells Google this is a ranked round-up
   const ldItemList = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
@@ -177,22 +222,78 @@ export default async function ListiclePage({ params }: PageProps) {
         '@type': 'ListItem',
         position: it.position ?? idx + 1,
         name: it.headline || it.productName || product?.name,
-        url: product?.slug ? `https://seenlio.com/products/${product.slug}` : undefined,
+        url: product?.slug ? `${SITE_URL}/products/${product.slug}` : undefined,
       };
     }),
+  };
+
+  // 2. Article — editorial wrapper Google uses for richer SERP treatment
+  const ldArticle = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: listicle.title,
+    description: listicle.seo?.metaDescription || (listicle.intro || '').slice(0, 200),
+    image: ogImage ? [ogImage] : undefined,
+    datePublished: publishedIso,
+    dateModified: modifiedIso,
+    author: { '@type': 'Organization', name: 'Seenlio', url: SITE_URL },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Seenlio',
+      logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
+    },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalUrl },
+  };
+
+  // 3. BreadcrumbList — Home › Round-ups › <title>
+  const ldBreadcrumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Round-ups', item: `${SITE_URL}/lists` },
+      { '@type': 'ListItem', position: 3, name: listicle.title, item: canonicalUrl },
+    ],
+  };
+
+  const ldGraph = {
+    '@context': 'https://schema.org',
+    '@graph': [ldArticle, ldItemList, ldBreadcrumb],
   };
 
   return (
     <article className='min-h-screen bg-[#0a0a0f]'>
       <script
         type='application/ld+json'
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(ldItemList) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(ldGraph) }}
       />
       <div className='mx-auto max-w-3xl px-4 py-12 sm:py-16'>
-        <nav className='mb-6 text-sm text-gray-500'>
-          <Link href='/lists' className='hover:text-purple-300'>
-            ← All round-ups
-          </Link>
+        <nav aria-label='Breadcrumb' className='mb-6 text-sm text-gray-500'>
+          <ol className='flex flex-wrap items-center gap-1.5'>
+            <li>
+              <Link href='/' className='hover:text-purple-300'>
+                Home
+              </Link>
+            </li>
+            <li aria-hidden='true' className='text-gray-600'>
+              ›
+            </li>
+            <li>
+              <Link href='/lists' className='hover:text-purple-300'>
+                Round-ups
+              </Link>
+            </li>
+            <li aria-hidden='true' className='text-gray-600'>
+              ›
+            </li>
+            <li
+              aria-current='page'
+              className='truncate text-gray-400 max-w-[60vw] sm:max-w-md'
+              title={listicle.title}
+            >
+              {listicle.title}
+            </li>
+          </ol>
         </nav>
 
         <header className='mb-10'>
@@ -209,6 +310,16 @@ export default async function ListiclePage({ params }: PageProps) {
           <h1 className='mt-4 text-3xl font-extrabold tracking-tight text-white sm:text-5xl'>
             {listicle.title}
           </h1>
+          {heroImages.length > 0 && (
+            <div className='mt-6'>
+              <ListicleCollage
+                images={heroImages}
+                alt={listicle.title || ''}
+                variant='hero'
+                priority
+              />
+            </div>
+          )}
           {listicle.intro && (
             <p className='mt-6 text-lg leading-relaxed text-gray-300'>
               {listicle.intro}

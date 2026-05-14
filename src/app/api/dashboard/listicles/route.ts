@@ -33,7 +33,7 @@ export async function GET(): Promise<NextResponse> {
       'populate[products][fields][0]': 'productCode',
       'populate[products][fields][1]': 'name',
       'populate[products][fields][2]': 'slug',
-      'populate[featuredImage]': '*',
+      'populate[0]': 'featuredImage',
     });
     const res = await fetch(`${STRAPI_URL}/api/listicles?${params.toString()}`, {
       headers: strapiHeaders(),

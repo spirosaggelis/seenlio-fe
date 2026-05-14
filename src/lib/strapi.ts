@@ -259,7 +259,9 @@ export async function getPublishedListicles(options: FetchOptions = {}) {
       featuredImage: true,
       products: {
         fields: ['productCode', 'name', 'slug'],
-        populate: { featuredImage: true },
+        // Products store imagery in `media` (repeatable) — featuredImage is
+        // optional. Populate both so the renderer can fall back gracefully.
+        populate: { featuredImage: true, media: true },
       },
     },
     ...options,
@@ -278,6 +280,7 @@ export async function getListicleBySlug(slug: string) {
         fields: ['productCode', 'name', 'slug', 'sourcePlatform', 'shortDescription'],
         populate: {
           featuredImage: true,
+          media: true,
           pricePoints: true,
           categories: { fields: ['name', 'slug', 'isActive'] },
         },

@@ -43,6 +43,7 @@ function NavBar() {
     { href: '/', label: 'Home' },
     { href: '/trending', label: 'Trending' },
     { href: '/products', label: 'Products' },
+    { href: '/lists', label: 'Round-ups' },
     { href: '/lookup', label: 'Lookup' },
     { href: '/about', label: 'About' },
   ];
@@ -108,6 +109,7 @@ function Footer() {
               {[
                 { href: '/trending', label: 'Trending' },
                 { href: '/products', label: 'All Products' },
+                { href: '/lists', label: 'Round-ups' },
                 { href: '/lookup', label: 'Product Lookup' },
               ].map((link) => (
                 <li key={link.href}>
