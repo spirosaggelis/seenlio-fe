@@ -55,6 +55,8 @@ export default function PipelineClient({
   const [formError, setFormError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
 
   // Form state
   const [formCategory, setFormCategory] = useState('');
@@ -170,6 +172,34 @@ export default function PipelineClient({
     }
   }
 
+  async function retryFailedPublishes() {
+    if (!confirm('Reset every failed publish-record back to scheduled? The next pipeline cycle will retry them.')) {
+      return;
+    }
+    setRetrying(true);
+    setRetryMessage(null);
+    try {
+      const res = await fetch('/api/dashboard/publish-records/retry-failed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRetryMessage(`Failed: ${data.error || res.status}`);
+      } else {
+        setRetryMessage(
+          `Reset ${data.reset} record${data.reset === 1 ? '' : 's'}` +
+            (data.failed ? ` (${data.failed} update errors)` : ''),
+        );
+      }
+    } catch (err) {
+      setRetryMessage(`Failed: ${String(err)}`);
+    } finally {
+      setRetrying(false);
+    }
+  }
+
   async function toggleTarget(target: Target) {
     setSaving(true);
     try {
@@ -213,6 +243,14 @@ export default function PipelineClient({
           </div>
 
           <div className='flex items-center gap-3'>
+            <button
+              onClick={retryFailedPublishes}
+              disabled={retrying}
+              title='Reset every failed publish-record to scheduled so the next pipeline cycle retries them.'
+              className='px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] border border-[var(--border-subtle)] text-[var(--fg-secondary)] hover:text-[var(--fg-primary)] hover:bg-[var(--bg-tertiary)] transition-colors disabled:opacity-50'
+            >
+              {retrying ? 'Resetting…' : 'Retry failed publishes'}
+            </button>
             <label className='text-xs text-[var(--fg-muted)]'>Run every</label>
             <select
               value={interval}
@@ -228,6 +266,9 @@ export default function PipelineClient({
             </select>
           </div>
         </div>
+        {retryMessage && (
+          <p className='mt-3 text-xs text-[var(--fg-muted)]'>{retryMessage}</p>
+        )}
       </div>
 
       {/* Product targets (was Pipeline Targets) */}
