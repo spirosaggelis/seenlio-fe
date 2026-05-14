@@ -11,6 +11,8 @@ interface PlatformAccount {
   credentials: Record<string, string> | null;
   tokenExpiresAt: string | null;
   lastPostedAt: string | null;
+  dailyPostLimit: number | null;
+  minPostIntervalMinutes: number | null;
 }
 
 interface Channel {
@@ -19,6 +21,10 @@ interface Channel {
   slug: string;
   description: string;
   isActive: boolean;
+  persona?: string;
+  timezone?: string;
+  preferredHours?: number[];
+  postsPerDay?: number | null;
   category: { id: string; name: string } | null;
   platformAccounts: PlatformAccount[];
 }

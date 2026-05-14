@@ -55,6 +55,10 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
     if (data.credentials !== undefined) payload.credentials = data.credentials;
     if (data.isActive !== undefined) payload.isActive = data.isActive;
     if (data.tokenExpiresAt !== undefined) payload.tokenExpiresAt = data.tokenExpiresAt;
+    if (data.dailyPostLimit !== undefined) payload.dailyPostLimit = data.dailyPostLimit;
+    if (data.minPostIntervalMinutes !== undefined) {
+      payload.minPostIntervalMinutes = data.minPostIntervalMinutes;
+    }
 
     const result = await strapiMutate('PUT', `/platform-accounts/${id}`, { data: payload });
     return NextResponse.json(result);

@@ -13,6 +13,8 @@ interface PlatformAccount {
   credentials: Record<string, string> | null;
   tokenExpiresAt: string | null;
   lastPostedAt: string | null;
+  dailyPostLimit: number | null;
+  minPostIntervalMinutes: number | null;
 }
 
 interface Channel {
@@ -22,8 +24,36 @@ interface Channel {
   description: string;
   isActive: boolean;
   persona?: string;
+  timezone?: string;
+  preferredHours?: number[];
+  postsPerDay?: number | null;
   category: { id: string; name: string } | null;
   platformAccounts: PlatformAccount[];
+}
+
+const COMMON_TIMEZONES = [
+  'UTC',
+  'Europe/Athens',
+  'Europe/London',
+  'Europe/Berlin',
+  'Europe/Paris',
+  'America/New_York',
+  'America/Chicago',
+  'America/Los_Angeles',
+  'Asia/Dubai',
+  'Asia/Tokyo',
+  'Australia/Sydney',
+];
+
+function parseHoursInput(raw: string): number[] {
+  return [
+    ...new Set(
+      raw
+        .split(/[,\s]+/)
+        .map((t) => parseInt(t, 10))
+        .filter((n) => Number.isFinite(n) && n >= 0 && n <= 23),
+    ),
+  ].sort((a, b) => a - b);
 }
 
 interface Props {
@@ -85,11 +115,19 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
   const [formDescription, setFormDescription] = useState('');
   const [formCategory, setFormCategory] = useState('');
   const [formPersona, setFormPersona] = useState('');
+  const [formTimezone, setFormTimezone] = useState('UTC');
+  const [formPreferredHours, setFormPreferredHours] = useState('');
+  const [formPostsPerDay, setFormPostsPerDay] = useState<string>('');
 
   // Account form
   const [showAccountForm, setShowAccountForm] = useState<string | null>(null); // channel ID
   const [formPlatform, setFormPlatform] = useState<string>(PLATFORMS[0]);
   const [formAccountName, setFormAccountName] = useState('');
+
+  // Per-account limits editor (account.id → draft values)
+  const [limitsEditId, setLimitsEditId] = useState<string | null>(null);
+  const [limitsDaily, setLimitsDaily] = useState<string>('');
+  const [limitsInterval, setLimitsInterval] = useState<string>('');
 
   // Expanded channels
   const [expanded, setExpanded] = useState<Set<string>>(
@@ -337,6 +375,9 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
     setFormDescription('');
     setFormCategory(categories[0]?.id || '');
     setFormPersona('');
+    setFormTimezone('UTC');
+    setFormPreferredHours('');
+    setFormPostsPerDay('');
     setShowChannelForm(true);
   }
 
@@ -346,12 +387,31 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
     setFormDescription(channel.description || '');
     setFormCategory(channel.category?.id || '');
     setFormPersona(channel.persona || '');
+    setFormTimezone(channel.timezone || 'UTC');
+    setFormPreferredHours((channel.preferredHours || []).join(', '));
+    setFormPostsPerDay(
+      channel.postsPerDay == null ? '' : String(channel.postsPerDay),
+    );
     setShowChannelForm(true);
   }
 
   async function saveChannel() {
     setSaving(true);
     try {
+      const hours = parseHoursInput(formPreferredHours);
+      const postsPerDayNum = formPostsPerDay.trim()
+        ? parseInt(formPostsPerDay, 10)
+        : null;
+      const schedulePayload = {
+        persona: formPersona,
+        timezone: formTimezone || 'UTC',
+        preferredHours: hours,
+        postsPerDay:
+          postsPerDayNum != null && Number.isFinite(postsPerDayNum)
+            ? postsPerDayNum
+            : null,
+      };
+
       if (editChannelId) {
         await fetch('/api/dashboard/channels', {
           method: 'PUT',
@@ -361,7 +421,7 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
             name: formName,
             description: formDescription,
             categoryId: formCategory || undefined,
-            persona: formPersona,
+            ...schedulePayload,
           }),
         });
       } else {
@@ -372,7 +432,7 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
             name: formName,
             description: formDescription,
             categoryId: formCategory || undefined,
-            persona: formPersona,
+            ...schedulePayload,
           }),
         });
       }
@@ -443,6 +503,46 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
       setToast({ type: 'success', message: 'Account deleted' });
     } catch {
       setToast({ type: 'error', message: 'Failed to delete account' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function openLimitsEditor(account: PlatformAccount) {
+    setLimitsEditId(account.id);
+    setLimitsDaily(
+      account.dailyPostLimit == null ? '' : String(account.dailyPostLimit),
+    );
+    setLimitsInterval(
+      account.minPostIntervalMinutes == null
+        ? ''
+        : String(account.minPostIntervalMinutes),
+    );
+  }
+
+  async function saveLimits(accountId: string) {
+    const daily = limitsDaily.trim() ? parseInt(limitsDaily, 10) : null;
+    const interval = limitsInterval.trim()
+      ? parseInt(limitsInterval, 10)
+      : null;
+    setSaving(true);
+    try {
+      await fetch('/api/dashboard/channels/accounts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: accountId,
+          dailyPostLimit:
+            daily != null && Number.isFinite(daily) ? daily : null,
+          minPostIntervalMinutes:
+            interval != null && Number.isFinite(interval) ? interval : null,
+        }),
+      });
+      await refreshChannels();
+      setLimitsEditId(null);
+      setToast({ type: 'success', message: 'Limits updated' });
+    } catch {
+      setToast({ type: 'error', message: 'Failed to update limits' });
     } finally {
       setSaving(false);
     }
@@ -777,6 +877,59 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
               default voice.
             </p>
           </div>
+
+          <div className='mt-4 grid grid-cols-1 md:grid-cols-3 gap-4'>
+            <div>
+              <label className='text-xs text-[var(--fg-muted)] block mb-1'>
+                Timezone
+              </label>
+              <select
+                value={formTimezone}
+                onChange={(e) => setFormTimezone(e.target.value)}
+                className='w-full bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm text-[var(--fg-primary)] px-3 py-2'
+              >
+                {COMMON_TIMEZONES.includes(formTimezone) ? null : (
+                  <option value={formTimezone}>{formTimezone}</option>
+                )}
+                {COMMON_TIMEZONES.map((tz) => (
+                  <option key={tz} value={tz}>
+                    {tz}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className='text-xs text-[var(--fg-muted)] block mb-1'>
+                Preferred hours (local 0-23)
+              </label>
+              <input
+                value={formPreferredHours}
+                onChange={(e) => setFormPreferredHours(e.target.value)}
+                placeholder='e.g. 9, 13, 17'
+                className='w-full bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm text-[var(--fg-primary)] px-3 py-2'
+              />
+              <p className='text-xs text-[var(--fg-muted)] mt-1'>
+                Comma-separated hours. The scheduler jitters the minute per account.
+              </p>
+            </div>
+            <div>
+              <label className='text-xs text-[var(--fg-muted)] block mb-1'>
+                Posts / day cap
+              </label>
+              <input
+                type='number'
+                min={0}
+                max={24}
+                value={formPostsPerDay}
+                onChange={(e) => setFormPostsPerDay(e.target.value)}
+                placeholder='blank = use account default'
+                className='w-full bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm text-[var(--fg-primary)] px-3 py-2'
+              />
+              <p className='text-xs text-[var(--fg-muted)] mt-1'>
+                Overrides each account&apos;s <em>dailyPostLimit</em> on this channel.
+              </p>
+            </div>
+          </div>
           <div className='flex gap-2 mt-4'>
             <button
               onClick={saveChannel}
@@ -1032,6 +1185,19 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                         />
                       </button>
 
+                      {/* Limits */}
+                      <button
+                        onClick={() =>
+                          limitsEditId === account.id
+                            ? setLimitsEditId(null)
+                            : openLimitsEditor(account)
+                        }
+                        title='Edit daily cap and minimum interval between posts'
+                        className='text-xs text-[var(--fg-muted)] hover:text-[var(--fg-primary)] transition-colors'
+                      >
+                        {limitsEditId === account.id ? 'Close' : 'Limits'}
+                      </button>
+
                       {/* Delete */}
                       <button
                         onClick={() => deleteAccount(account.id)}
@@ -1040,6 +1206,48 @@ export default function ChannelsClient({ initialChannels, categories }: Props) {
                         Remove
                       </button>
                     </div>
+                    {limitsEditId === account.id && (
+                      <div className='mt-3 ml-12 flex flex-wrap items-end gap-3 bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] p-3'>
+                        <div>
+                          <label className='text-xs text-[var(--fg-muted)] block mb-1'>
+                            Daily post limit
+                          </label>
+                          <input
+                            type='number'
+                            min={0}
+                            max={50}
+                            value={limitsDaily}
+                            onChange={(e) => setLimitsDaily(e.target.value)}
+                            placeholder='3'
+                            className='w-28 bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm text-[var(--fg-primary)] px-2 py-1.5'
+                          />
+                        </div>
+                        <div>
+                          <label className='text-xs text-[var(--fg-muted)] block mb-1'>
+                            Min interval (minutes)
+                          </label>
+                          <input
+                            type='number'
+                            min={0}
+                            max={1440}
+                            value={limitsInterval}
+                            onChange={(e) => setLimitsInterval(e.target.value)}
+                            placeholder='180'
+                            className='w-32 bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-sm text-[var(--fg-primary)] px-2 py-1.5'
+                          />
+                        </div>
+                        <button
+                          onClick={() => saveLimits(account.id)}
+                          disabled={saving}
+                          className='px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 transition-opacity disabled:opacity-50'
+                        >
+                          Save
+                        </button>
+                        <p className='text-xs text-[var(--fg-muted)] basis-full md:basis-auto'>
+                          Channel <em>postsPerDay</em>, if set, overrides the daily cap on this account.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 );
               })}

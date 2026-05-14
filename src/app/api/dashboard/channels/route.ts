@@ -62,6 +62,8 @@ export async function GET(): Promise<NextResponse> {
             credentials: accAttrs.credentials,
             tokenExpiresAt: accAttrs.tokenExpiresAt,
             lastPostedAt: accAttrs.lastPostedAt,
+            dailyPostLimit: accAttrs.dailyPostLimit ?? null,
+            minPostIntervalMinutes: accAttrs.minPostIntervalMinutes ?? null,
           };
         },
       );
@@ -75,6 +77,14 @@ export async function GET(): Promise<NextResponse> {
         description: attrs.description,
         isActive: attrs.isActive,
         persona: (schedule.persona as string) || '',
+        timezone: (schedule.timezone as string) || '',
+        preferredHours: Array.isArray(schedule.preferredHours)
+          ? (schedule.preferredHours as number[])
+          : [],
+        postsPerDay:
+          typeof schedule.postsPerDay === 'number'
+            ? (schedule.postsPerDay as number)
+            : null,
         publishingSchedule: schedule,
         category: catData
           ? { id: (catData as Record<string, unknown>).documentId || (catData as Record<string, unknown>).id, name: (catData as Record<string, unknown>).name }
@@ -95,15 +105,29 @@ export async function GET(): Promise<NextResponse> {
   }
 }
 
-async function readPersona(
+async function readPublishingSchedule(
   channelId: string,
 ): Promise<Record<string, unknown>> {
-  const res = await strapiGet(
-    `/channels/${channelId}?fields[0]=id&populate=*`,
-  );
+  // Fetch the channel WITHOUT a fields restriction — Strapi v5's `fields[…]=id`
+  // would drop the publishingSchedule JSON, and the merge would then overwrite
+  // preferredHours / timezone / postsPerDay on every save.
+  const res = await strapiGet(`/channels/${channelId}`);
   const attrs = (res?.data?.attributes || res?.data || {}) as Record<string, unknown>;
   const schedule = (attrs.publishingSchedule as Record<string, unknown>) || {};
   return { ...schedule };
+}
+
+const SCHEDULE_FIELDS = ['persona', 'timezone', 'preferredHours', 'postsPerDay'] as const;
+type ScheduleField = typeof SCHEDULE_FIELDS[number];
+
+function pickScheduleUpdates(body: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of SCHEDULE_FIELDS) {
+    if (body[k as ScheduleField] !== undefined) {
+      out[k] = body[k as ScheduleField];
+    }
+  }
+  return out;
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -115,8 +139,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       category: body.categoryId || undefined,
       isActive: body.isActive ?? true,
     };
-    if (body.persona !== undefined) {
-      data.publishingSchedule = { persona: body.persona };
+    const schedUpdates = pickScheduleUpdates(body);
+    if (Object.keys(schedUpdates).length > 0) {
+      data.publishingSchedule = schedUpdates;
     }
     const result = await strapiMutate('POST', '/channels', { data });
     return NextResponse.json(result);
@@ -137,10 +162,12 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
     if (data.description !== undefined) payload.description = data.description;
     if (data.categoryId !== undefined) payload.category = data.categoryId;
     if (data.isActive !== undefined) payload.isActive = data.isActive;
-    if (data.persona !== undefined) {
-      // Preserve other keys in the publishingSchedule JSON.
-      const existing = await readPersona(id as string);
-      payload.publishingSchedule = { ...existing, persona: data.persona };
+
+    const schedUpdates = pickScheduleUpdates(data as Record<string, unknown>);
+    if (Object.keys(schedUpdates).length > 0) {
+      // Merge into existing JSON so other keys aren't dropped.
+      const existing = await readPublishingSchedule(id as string);
+      payload.publishingSchedule = { ...existing, ...schedUpdates };
     }
 
     const result = await strapiMutate('PUT', `/channels/${id}`, { data: payload });
