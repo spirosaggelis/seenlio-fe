@@ -17,6 +17,10 @@ export async function GET() {
     <loc>${SITE_URL}/products.xml</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
   </sitemap>
+  <sitemap>
+    <loc>${SITE_URL}/lists.xml</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+  </sitemap>
 </sitemapindex>`;
 
   return new NextResponse(xml, { 

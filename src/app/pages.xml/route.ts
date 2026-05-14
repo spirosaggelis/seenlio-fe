@@ -7,6 +7,7 @@ export async function GET() {
     { loc: SITE_URL, priority: '1.0', changefreq: 'daily' },
     { loc: `${SITE_URL}/products`, priority: '0.9', changefreq: 'daily' },
     { loc: `${SITE_URL}/trending`, priority: '0.9', changefreq: 'daily' },
+    { loc: `${SITE_URL}/lists`, priority: '0.8', changefreq: 'weekly' },
     { loc: `${SITE_URL}/lookup`, priority: '0.5', changefreq: 'weekly' },
     { loc: `${SITE_URL}/privacy`, priority: '0.3', changefreq: 'yearly' },
     { loc: `${SITE_URL}/terms`, priority: '0.3', changefreq: 'yearly' },

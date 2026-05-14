@@ -243,6 +243,74 @@ export async function getChannels() {
   });
 }
 
+// ── Listicles ────────────────────────────────────────────────────────────
+
+/** Strapi filter: listicles visible on the public site. */
+export const PUBLISHED_LISTICLE_FILTER = {
+  listicleStatus: { $eq: 'published' },
+} as const;
+
+export async function getPublishedListicles(options: FetchOptions = {}) {
+  const res = await fetchStrapi<unknown[]>('/listicles', {
+    filters: { ...PUBLISHED_LISTICLE_FILTER },
+    sort: ['publishedOn:desc', 'priorityScore:desc'],
+    pagination: { pageSize: 50 },
+    populate: {
+      featuredImage: true,
+      products: {
+        fields: ['productCode', 'name', 'slug'],
+        populate: { featuredImage: true },
+      },
+    },
+    ...options,
+  });
+  return Array.isArray(res.data) ? (res.data as Record<string, unknown>[]) : [];
+}
+
+export async function getListicleBySlug(slug: string) {
+  const res = await fetchStrapi<unknown[]>('/listicles', {
+    filters: { slug: { $eq: slug }, ...PUBLISHED_LISTICLE_FILTER },
+    populate: {
+      items: true,
+      featuredImage: true,
+      seo: true,
+      products: {
+        fields: ['productCode', 'name', 'slug', 'sourcePlatform', 'shortDescription'],
+        populate: {
+          featuredImage: true,
+          pricePoints: true,
+          categories: { fields: ['name', 'slug', 'isActive'] },
+        },
+      },
+    },
+  });
+  return (res.data?.[0] as Record<string, unknown> | undefined) || null;
+}
+
+/**
+ * Lightweight pointer to related listicles for the outro: same priceTier or
+ * sharing a product. Excludes the current slug.
+ */
+export async function getRelatedListicles(
+  currentSlug: string,
+  priceTier: string | null | undefined,
+  limit = 3,
+) {
+  const res = await fetchStrapi<unknown[]>('/listicles', {
+    filters: {
+      ...PUBLISHED_LISTICLE_FILTER,
+      slug: { $ne: currentSlug },
+      ...(priceTier && priceTier !== 'any'
+        ? { priceTier: { $eq: priceTier } }
+        : {}),
+    },
+    sort: ['priorityScore:desc'],
+    pagination: { pageSize: limit },
+    fields: ['title', 'slug', 'angleHook', 'priceTier'],
+  });
+  return Array.isArray(res.data) ? (res.data as Record<string, unknown>[]) : [];
+}
+
 export async function getCategory(slug: string) {
   const res = await fetchStrapi<unknown[]>('/categories', {
     filters: { slug: { $eq: slug }, isActive: { $eq: true } },
