@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
+import {
+  SITE_URL,
+  SITEMAP_XML_HEADERS,
+  strapiHeaders,
+  unwrapRow,
+  toLastmod,
+  SITEMAP_REVALIDATE,
+} from '@/lib/sitemap';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://viralproducts.com";
-const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || "http://localhost:1337";
-const STRAPI_API_TOKEN = process.env.STRAPI_API_TOKEN;
+const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
 
 export async function GET() {
   let urls = '';
@@ -10,26 +16,22 @@ export async function GET() {
   try {
     let page = 1;
     let hasMore = true;
-    
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (STRAPI_API_TOKEN) {
-      headers['Authorization'] = `Bearer ${STRAPI_API_TOKEN}`;
-    }
 
     while (hasMore) {
       const res = await fetch(
         `${STRAPI_URL}/api/categories?fields[0]=slug&fields[1]=updatedAt&pagination[pageSize]=100&pagination[page]=${page}&filters[isActive][$eq]=true`,
-        { headers, next: { revalidate: 3600 } }
+        { headers: strapiHeaders(), next: { revalidate: SITEMAP_REVALIDATE } },
       );
-      
+
       if (!res.ok) break;
-      
+
       const data = await res.json();
-      for (const cat of data.data || []) {
+      for (const row of data.data || []) {
+        const cat = unwrapRow<{ slug?: string; updatedAt?: string }>(row);
+        const lastmod = toLastmod(cat.updatedAt);
         urls += `
   <url>
-    <loc>${SITE_URL}/categories/${cat.slug}</loc>
-    <lastmod>${new Date(cat.updatedAt || new Date()).toISOString()}</lastmod>
+    <loc>${SITE_URL}/categories/${cat.slug}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>`;
@@ -50,10 +52,5 @@ export async function GET() {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}
 </urlset>`;
 
-  return new NextResponse(xml, { 
-    headers: { 
-      'Content-Type': 'application/xml',
-      'Cache-Control': 'public, max-age=3600, s-maxage=3600'
-    } 
-  });
+  return new NextResponse(xml, { headers: SITEMAP_XML_HEADERS });
 }
