@@ -162,7 +162,6 @@ export default async function ChannelMatrix() {
                       acc.accountId,
                     );
                     if (!url) return null;
-                    const isFacebook = acc.platform === 'facebook';
                     return (
                       <a
                         key={acc.id}
@@ -171,15 +170,9 @@ export default async function ChannelMatrix() {
                         rel='noopener noreferrer'
                         aria-label={`${meta.label} — ${acc.accountName}`}
                         title={`${meta.label} · @${acc.accountName.replace(/^@/, '')}`}
-                        className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border border-white/10 bg-white/[0.03] text-gray-400 transition-colors ${isFacebook ? 'group hover:border-[#1877F2]/40' : meta.color}`}
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border border-white/10 bg-white/[0.03] text-gray-400 transition-colors ${meta.color}`}
                       >
-                        {isFacebook ? (
-                          <span className='text-gray-400 transition-colors group-hover:text-[#1877F2]'>
-                            {meta.icon}
-                          </span>
-                        ) : (
-                          meta.icon
-                        )}
+                        {meta.icon}
                       </a>
                     );
                   })}
