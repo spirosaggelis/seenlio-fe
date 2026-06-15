@@ -5,6 +5,7 @@ import { getProduct } from '@/lib/strapi';
 import {
   buildVideoObjectJsonLd,
   pickProductVideo,
+  publicVideoThumbnail,
   type VideoItem,
 } from '@/lib/productVideo';
 
@@ -15,6 +16,7 @@ interface ProductData {
   slug: string;
   shortDescription?: string;
   description?: string;
+  media?: Array<{ url?: string; type?: string; isPrimary?: boolean }>;
   videos?: VideoItem[];
 }
 
@@ -30,11 +32,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
   const watchUrl = `${siteUrl}/products/${product.slug}/watch`;
   const video = pickProductVideo(product.videos);
-  const title = `${video?.title || product.name} | Seenlio`;
+  if (!video) return { title: 'Video Not Found' };
+
+  const title = `${video.title || product.name} | Seenlio`;
   const description =
     product.shortDescription ||
     product.description ||
     `Watch the viral short for ${product.name} on Seenlio.`;
+  const ogImage = publicVideoThumbnail(video);
 
   return {
     title,
@@ -45,11 +50,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       url: watchUrl,
       type: 'video.other',
-      ...(video?.kind === 'youtube'
-        ? { images: [{ url: video.thumbnailUrl }] }
-        : video?.thumbnailUrl
-          ? { images: [{ url: video.thumbnailUrl }] }
-          : {}),
+      ...(ogImage ? { images: [{ url: ogImage }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
     },
   };
 }
@@ -118,24 +125,13 @@ export default async function ProductWatchPage({ params }: PageProps) {
               className='relative w-full overflow-hidden rounded-[1.5rem] bg-black'
               style={{ aspectRatio: '9 / 16' }}
             >
-              {productVideo.kind === 'youtube' ? (
-                <iframe
-                  className='absolute inset-0 h-full w-full'
-                  src={`${productVideo.embedUrl}?rel=0&modestbranding=1`}
-                  title={productVideo.title || product.name}
-                  allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
-                  allowFullScreen
-                />
-              ) : (
-                <video
-                  className='absolute inset-0 h-full w-full object-cover'
-                  src={productVideo.src}
-                  poster={productVideo.poster}
-                  controls
-                  playsInline
-                  preload='metadata'
-                />
-              )}
+              <iframe
+                className='absolute inset-0 h-full w-full'
+                src={`${productVideo.embedUrl}?rel=0&modestbranding=1`}
+                title={productVideo.title || product.name}
+                allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
+                allowFullScreen
+              />
             </div>
           </div>
         </div>
@@ -147,16 +143,14 @@ export default async function ProductWatchPage({ params }: PageProps) {
           >
             View product details
           </Link>
-          {productVideo.kind === 'youtube' && (
-            <a
-              href={productVideo.watchUrl}
-              target='_blank'
-              rel='noopener noreferrer'
-              className='text-xs text-gray-500 hover:text-gray-300 transition-colors'
-            >
-              Also on YouTube
-            </a>
-          )}
+          <a
+            href={productVideo.watchUrl}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='text-xs text-gray-500 hover:text-gray-300 transition-colors'
+          >
+            Also on YouTube
+          </a>
         </div>
       </div>
     </div>

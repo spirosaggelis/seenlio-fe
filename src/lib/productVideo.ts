@@ -1,3 +1,6 @@
+import { proxyImage } from '@/lib/imageProxy';
+import { resolveProductImage, type ImageSource } from '@/lib/productImage';
+
 export interface PublishRecord {
   platform: string;
   publishStatus?: string;
@@ -9,34 +12,21 @@ export interface PublishRecord {
 export interface VideoItem {
   id: number;
   title?: string;
-  storageUrl?: string;
-  thumbnailUrl?: string;
-  aspectRatio?: string;
-  duration?: number;
   createdAt?: string;
   generatedAt?: string;
   publishRecords?: PublishRecord[];
 }
 
-export type PickedVideo =
-  | {
-      kind: 'youtube';
-      id: string;
-      title?: string;
-      thumbnailUrl: string;
-      embedUrl: string;
-      watchUrl: string;
-      uploadDate: string;
-    }
-  | {
-      kind: 'native';
-      src: string;
-      poster?: string;
-      aspectRatio?: string;
-      title?: string;
-      thumbnailUrl?: string;
-      uploadDate?: string;
-    };
+/** Public video surfaced on the site — YouTube only (no local MinIO assets). */
+export type PickedVideo = {
+  kind: 'youtube';
+  id: string;
+  title?: string;
+  thumbnailUrl: string;
+  embedUrl: string;
+  watchUrl: string;
+  uploadDate: string;
+};
 
 export function extractYoutubeId(url: string): string | null {
   const patterns = [
@@ -62,6 +52,11 @@ function pickUploadDate(
   return raw;
 }
 
+export function youtubeThumbnail(id: string): string {
+  return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+}
+
+/** Returns the published YouTube short for a product, if any. */
 export function pickProductVideo(videos: VideoItem[] | undefined): PickedVideo | null {
   if (!videos || videos.length === 0) return null;
 
@@ -82,7 +77,7 @@ export function pickProductVideo(videos: VideoItem[] | undefined): PickedVideo |
           kind: 'youtube',
           id,
           title: v.title,
-          thumbnailUrl: v.thumbnailUrl || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+          thumbnailUrl: youtubeThumbnail(id),
           embedUrl: `https://www.youtube.com/embed/${id}`,
           watchUrl: `https://www.youtube.com/watch?v=${id}`,
           uploadDate: pickUploadDate(yt.publishedAt, v.generatedAt, v.createdAt),
@@ -91,19 +86,21 @@ export function pickProductVideo(videos: VideoItem[] | undefined): PickedVideo |
     }
   }
 
-  const first = sorted[0];
-  if (first?.storageUrl) {
-    return {
-      kind: 'native',
-      src: first.storageUrl,
-      poster: first.thumbnailUrl,
-      aspectRatio: first.aspectRatio,
-      title: first.title,
-      thumbnailUrl: first.thumbnailUrl,
-      uploadDate: pickUploadDate(undefined, first.generatedAt, first.createdAt),
-    };
-  }
   return null;
+}
+
+export function publicVideoThumbnail(video: PickedVideo): string {
+  return youtubeThumbnail(video.id);
+}
+
+export function publicVideoStreamUrl(video: PickedVideo): string {
+  return video.embedUrl;
+}
+
+/** Proxied product image for OG / fallbacks when no YouTube thumb is used. */
+export function publicProductImageUrl(product: ImageSource): string {
+  const raw = resolveProductImage(product);
+  return raw ? proxyImage(raw) : '';
 }
 
 export function buildVideoObjectJsonLd(options: {
@@ -119,21 +116,15 @@ export function buildVideoObjectJsonLd(options: {
     '@type': 'VideoObject',
     name: video.title || name,
     description,
-    thumbnailUrl: video.kind === 'youtube' ? video.thumbnailUrl : video.thumbnailUrl || video.poster,
+    thumbnailUrl: publicVideoThumbnail(video),
     uploadDate: video.uploadDate,
     url: pageUrl,
+    embedUrl: video.embedUrl,
+    contentUrl: video.watchUrl,
   };
 
   if (durationSeconds && durationSeconds > 0) {
     base.duration = `PT${Math.round(durationSeconds)}S`;
-  }
-
-  if (video.kind === 'youtube') {
-    base.embedUrl = video.embedUrl;
-    base.contentUrl = video.watchUrl;
-  } else {
-    base.contentUrl = video.src;
-    if (video.poster) base.thumbnailUrl = video.thumbnailUrl || video.poster;
   }
 
   return base;

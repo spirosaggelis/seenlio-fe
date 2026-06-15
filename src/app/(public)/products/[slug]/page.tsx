@@ -455,7 +455,7 @@ export default async function ProductPage({ params }: PageProps) {
                       <span className="absolute inset-0 animate-ping rounded-full bg-pink-400 opacity-75" />
                       <span className="relative inline-flex h-2 w-2 rounded-full bg-pink-400" />
                     </span>
-                    {productVideo.kind === 'youtube' ? 'Shorts · On YouTube' : 'Our Video'}
+                    Shorts · On YouTube
                   </div>
                 )}
 
@@ -488,25 +488,14 @@ export default async function ProductPage({ params }: PageProps) {
                       className="relative w-full overflow-hidden rounded-[1.5rem] bg-black"
                       style={{ aspectRatio: '9 / 16' }}
                     >
-                      {productVideo.kind === 'youtube' ? (
-                        <iframe
-                          className="absolute inset-0 w-full h-full"
-                          src={`${productVideo.embedUrl}?rel=0&modestbranding=1`}
-                          title={productVideo.title || product.name}
-                          loading="lazy"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                          allowFullScreen
-                        />
-                      ) : (
-                        <video
-                          className="absolute inset-0 w-full h-full object-cover"
-                          src={productVideo.src}
-                          poster={productVideo.poster}
-                          controls
-                          playsInline
-                          preload="metadata"
-                        />
-                      )}
+                      <iframe
+                        className="absolute inset-0 w-full h-full"
+                        src={`${productVideo.embedUrl}?rel=0&modestbranding=1`}
+                        title={productVideo.title || product.name}
+                        loading="lazy"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
                     </div>
                   </div>
                   <div className='mt-3 text-center'>

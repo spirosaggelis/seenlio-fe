@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { proxyImage } from '@/lib/imageProxy';
 import {
   pickProductVideo,
+  publicVideoStreamUrl,
+  publicVideoThumbnail,
   type PickedVideo,
   type PublishRecord,
   type VideoItem,
@@ -52,27 +54,14 @@ function buildVideoSitemapBlock(
   const title = escapeXml((video.title || productName).slice(0, 100));
   const desc = escapeXml(description.slice(0, 2048));
   const pubDate = toLastmod(video.uploadDate) ?? new Date().toISOString();
-
-  if (video.kind === 'youtube') {
-    return `
-    <video:video>
-      <video:thumbnail_loc>${escapeXml(video.thumbnailUrl)}</video:thumbnail_loc>
-      <video:title>${title}</video:title>
-      <video:description>${desc}</video:description>
-      <video:player_loc>${escapeXml(video.embedUrl)}</video:player_loc>
-      <video:publication_date>${pubDate}</video:publication_date>
-    </video:video>`;
-  }
-
-  const thumbnail = video.thumbnailUrl || video.poster;
-  if (!thumbnail) return '';
+  const thumbnail = publicVideoThumbnail(video);
 
   return `
     <video:video>
       <video:thumbnail_loc>${escapeXml(thumbnail)}</video:thumbnail_loc>
       <video:title>${title}</video:title>
       <video:description>${desc}</video:description>
-      <video:content_loc>${escapeXml(video.src)}</video:content_loc>
+      <video:player_loc>${escapeXml(publicVideoStreamUrl(video))}</video:player_loc>
       <video:publication_date>${pubDate}</video:publication_date>
     </video:video>`;
 }
@@ -109,10 +98,8 @@ function productSitemapQuery(page: number, startDate: string, endDate: string): 
     'populate[media][fields][1]': 'type',
     'populate[media][fields][2]': 'isPrimary',
     'populate[videos][fields][0]': 'title',
-    'populate[videos][fields][1]': 'storageUrl',
-    'populate[videos][fields][2]': 'thumbnailUrl',
-    'populate[videos][fields][3]': 'createdAt',
-    'populate[videos][fields][4]': 'generatedAt',
+    'populate[videos][fields][1]': 'createdAt',
+    'populate[videos][fields][2]': 'generatedAt',
     'populate[videos][populate][publishRecords][fields][0]': 'platform',
     'populate[videos][populate][publishRecords][fields][1]': 'publishStatus',
     'populate[videos][populate][publishRecords][fields][2]': 'externalUrl',
@@ -182,18 +169,15 @@ export async function GET(request: Request, context: { params: { id: string } | 
             product.description ||
             product.name ||
             'Viral product short on Seenlio';
-          const videoBlock = buildVideoSitemapBlock(
-            productVideo,
-            product.name || product.slug,
-            videoDescription,
-          );
-          if (videoBlock) {
-            urls += `
+          urls += `
   <url>
     <loc>${SITE_URL}/products/${product.slug}/watch</loc>${lastmodXml(toLastmod(productVideo.uploadDate))}
-    <priority>0.6</priority>${videoBlock}
+    <priority>0.6</priority>${buildVideoSitemapBlock(
+      productVideo,
+      product.name || product.slug,
+      videoDescription,
+    )}
   </url>`;
-          }
         }
       }
 
