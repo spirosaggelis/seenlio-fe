@@ -1,9 +1,13 @@
 import { getRollingPageViewCount } from '@/lib/bq/rollingPageViews';
 import { getTrendingProducts, getCategories, getProducts, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
+import { resolveListingProducts } from "@/lib/affiliateListing";
 import HeroSection from "@/components/HeroSection";
 import SectionHeader from "@/components/SectionHeader";
 import ProductCard from "@/components/ProductCard";
 import CategoryCard from "@/components/CategoryCard";
+
+/** Listing shop links are resolved per visitor country (Amazon geo). */
+export const dynamic = "force-dynamic";
 
 interface Category {
   id: number;
@@ -33,6 +37,9 @@ interface Product {
   slug: string;
   productCode: string;
   sourcePlatform?: string;
+  sourceUrl?: string;
+  affiliateLinks?: Array<{ platform: string; url: string; isActive?: boolean }>;
+  affiliateHref?: string;
   shortDescription?: string;
   trendScore?: number;
   rating?: number;
@@ -65,9 +72,13 @@ export default async function HomePage() {
       }),
       getRollingPageViewCount(365),
     ]);
-    trending = (trendingData || []) as Product[];
+    trending = await resolveListingProducts(
+      (trendingData || []) as Product[],
+    );
     categories = (categoryData.data || []) as Category[];
-    recent = (recentData.data || []) as Product[];
+    recent = await resolveListingProducts(
+      (recentData.data || []) as Product[],
+    );
     productCount = productCountData.meta?.pagination?.total ?? 0;
     pageViews = pageViewCount;
   } catch {
@@ -137,6 +148,7 @@ export default async function HomePage() {
                       slug={product.slug}
                       productCode={product.productCode}
                       sourcePlatform={product.sourcePlatform}
+                      affiliateHref={product.affiliateHref!}
                       shortDescription={product.shortDescription}
                       imageUrl={primaryImage?.url}
                       pricePoints={product.pricePoints}
@@ -219,6 +231,7 @@ export default async function HomePage() {
                       slug={product.slug}
                       productCode={product.productCode}
                       sourcePlatform={product.sourcePlatform}
+                      affiliateHref={product.affiliateHref!}
                       shortDescription={product.shortDescription}
                       imageUrl={primaryImage?.url}
                       pricePoints={product.pricePoints}

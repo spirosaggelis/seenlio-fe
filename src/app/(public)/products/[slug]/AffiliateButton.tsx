@@ -25,7 +25,7 @@ export default function AffiliateButton({
     <a
       href={href}
       target="_blank"
-      rel="noopener noreferrer"
+      rel="nofollow sponsored noopener"
       onClick={() => trackAffiliateClick(productCode, platform, href, clickSource)}
       data-product-code={productCode}
       data-platform={platform}

@@ -1,8 +1,14 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { getProduct, getProducts, getSettings, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
 import { proxyImage } from "@/lib/imageProxy";
+import {
+  buildAffiliateDestinationUrl,
+  getVisitorCountry,
+} from "@/lib/affiliateDestination";
+import { resolveListingProducts } from "@/lib/affiliateListing";
 import TrendBadge from "@/components/TrendBadge";
 import PriceDisplay from "@/components/PriceDisplay";
 import StarRating from "@/components/StarRating";
@@ -14,6 +20,9 @@ import ProductViewTracker from "./ProductViewTracker";
 import StickyCtaBar from "./StickyCtaBar";
 import AffiliateButton from "./AffiliateButton";
 import type { AffiliatePattern } from "@/lib/affiliateTypes";
+
+/** Affiliate hrefs depend on visitor geo (Amazon EU storefront). Must not be statically cached. */
+export const dynamic = "force-dynamic";
 
 interface AffiliateLink {
   platform: string;
@@ -143,72 +152,15 @@ const PLATFORM_LABELS: Record<string, string> = {
   other: "Store",
 };
 
-function buildAffiliateUrl(baseUrl: string, productCode: string, platform: string): string {
-  const url = new URL(baseUrl);
-  url.searchParams.set('utm_source', 'seenlio');
-  url.searchParams.set('utm_medium', platform);
-  url.searchParams.set('utm_campaign', productCode);
-  return url.toString();
-}
-
-/** Extract ASIN from any amazon.com/dp/XXXXXXXXXX URL */
-function extractAsin(url: string): string | null {
-  const m = url.match(/\/dp\/([A-Z0-9]{10})/i);
-  return m ? m[1].toUpperCase() : null;
-}
-
-/** Build the href for a buy button using affiliate patterns from Settings */
-function buildBuyHref(
-  rawUrl: string,
-  platform: string,
-  productCode: string,
-  patterns: AffiliatePattern[],
-): string {
-  // Route Temu through /go/ so clicks use affiliateLinks (temu.to) when available.
-  if (platform === "temu") {
-    return `/go/${productCode}`;
-  }
-
-  const pattern = patterns.find(
-    (p) => p.platform === platform && p.isActive !== false,
-  );
-
-  // Amazon with geo-redirect
-  if (pattern?.useGeoRedirect && platform === "amazon") {
-    const asin = extractAsin(rawUrl);
-    if (asin) {
-      return `/api/affiliate/amazon?asin=${asin}&productCode=${encodeURIComponent(productCode)}`;
-    }
-  }
-
-  // Apply affiliate pattern: append paramName=paramValue + extraParams
-  if (pattern) {
-    try {
-      const url = new URL(rawUrl);
-      url.searchParams.set(pattern.paramName, pattern.paramValue);
-      url.searchParams.set("utm_source", "seenlio");
-      url.searchParams.set("utm_medium", platform);
-      url.searchParams.set("utm_campaign", productCode);
-      if (pattern.extraParams && typeof pattern.extraParams === "object") {
-        for (const [k, v] of Object.entries(pattern.extraParams)) {
-          url.searchParams.set(k, v);
-        }
-      }
-      return url.toString();
-    } catch {
-      // Invalid URL — fall through to default
-    }
-  }
-
-  // Fallback: just add UTM params
-  return buildAffiliateUrl(rawUrl, productCode, platform);
-}
-
 interface RelatedProduct {
   id: number;
   name: string;
   slug: string;
   productCode: string;
+  sourcePlatform?: string;
+  sourceUrl?: string;
+  affiliateLinks?: AffiliateLink[];
+  affiliateHref: string;
   shortDescription?: string;
   trendScore?: number;
   rating?: number;
@@ -293,6 +245,9 @@ const platformIcons: Record<string, string> = {
 
 export default async function ProductPage({ params }: PageProps) {
   const { slug } = await params;
+  const reqHeaders = await headers();
+  const country = getVisitorCountry(reqHeaders);
+
   const [product, settings] = await Promise.all([
     getProduct(slug) as Promise<ProductData | null>,
     getSettings(),
@@ -301,6 +256,13 @@ export default async function ProductPage({ params }: PageProps) {
 
   const affiliatePatterns: AffiliatePattern[] =
     (settings as Record<string, unknown>)?.affiliatePatterns as AffiliatePattern[] ?? [];
+
+  const productInput = {
+    productCode: product.productCode,
+    sourcePlatform: product.sourcePlatform,
+    sourceUrl: product.sourceUrl,
+    affiliateLinks: product.affiliateLinks,
+  };
 
   const productVideo = pickProductVideo(product.videos);
   const currentPrice = product.pricePoints?.[0];
@@ -314,38 +276,50 @@ export default async function ProductPage({ params }: PageProps) {
   const activeLinks =
     product.affiliateLinks?.filter((l) => l.isActive !== false) || [];
 
-  // Build CTA buttons — use manual affiliate links if set, otherwise auto-build from sourceUrl + patterns
   const ctaButtons: Array<{
     platform: string;
     href: string;
     label: string;
     gradient: string;
     icon: string;
-  }> = activeLinks.length > 0
-    ? activeLinks.map((link) => {
-        const platform = link.platform.toLowerCase();
-        return {
-          platform,
-          href: buildBuyHref(link.url, platform, product.productCode, affiliatePatterns),
-          label: `Shop on ${PLATFORM_LABELS[platform] ?? link.platform}`,
-          gradient: platformGradients[platform] ?? platformGradients.default,
-          icon: platformIcons[platform] ?? platformIcons.default,
-        };
-      })
-    : product.sourceUrl
-    ? (() => {
-        const platform = (product.sourcePlatform ?? "other").toLowerCase();
-        return [
-          {
-            platform,
-            href: buildBuyHref(product.sourceUrl!, platform, product.productCode, affiliatePatterns),
-            label: `Shop on ${PLATFORM_LABELS[platform] ?? "Store"}`,
-            gradient: platformGradients[platform] ?? platformGradients.default,
-            icon: platformIcons[platform] ?? platformIcons.default,
-          },
-        ];
-      })()
-    : [];
+  }> =
+    activeLinks.length > 0
+      ? await Promise.all(
+          activeLinks.map(async (link) => {
+            const platform = link.platform.toLowerCase();
+            return {
+              platform,
+              href: await buildAffiliateDestinationUrl(
+                productInput,
+                affiliatePatterns,
+                country,
+                { platform, rawUrl: link.url },
+              ),
+              label: `Shop on ${PLATFORM_LABELS[platform] ?? link.platform}`,
+              gradient: platformGradients[platform] ?? platformGradients.default,
+              icon: platformIcons[platform] ?? platformIcons.default,
+            };
+          }),
+        )
+      : product.sourceUrl
+        ? [
+            {
+              platform: (product.sourcePlatform ?? "other").toLowerCase(),
+              href: await buildAffiliateDestinationUrl(
+                productInput,
+                affiliatePatterns,
+                country,
+              ),
+              label: `Shop on ${PLATFORM_LABELS[(product.sourcePlatform ?? "other").toLowerCase()] ?? "Store"}`,
+              gradient:
+                platformGradients[(product.sourcePlatform ?? "other").toLowerCase()] ??
+                platformGradients.default,
+              icon:
+                platformIcons[(product.sourcePlatform ?? "other").toLowerCase()] ??
+                platformIcons.default,
+            },
+          ]
+        : [];
 
 
   // Fetch related products from the same category
@@ -366,7 +340,9 @@ export default async function ProductPage({ params }: PageProps) {
         pagination: { pageSize: 4 },
         sort: ["trendScore:desc"],
       });
-      relatedProducts = (res.data || []) as RelatedProduct[];
+      relatedProducts = await resolveListingProducts(
+        (res.data || []) as RelatedProduct[],
+      );
     } catch {
       // silently fail
     }
@@ -626,6 +602,8 @@ export default async function ProductPage({ params }: PageProps) {
                     name={rp.name}
                     slug={rp.slug}
                     productCode={rp.productCode}
+                    sourcePlatform={rp.sourcePlatform}
+                    affiliateHref={rp.affiliateHref}
                     shortDescription={rp.shortDescription}
                     imageUrl={rpImage?.url}
                     pricePoints={rp.pricePoints}

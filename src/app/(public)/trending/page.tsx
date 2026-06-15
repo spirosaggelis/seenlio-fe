@@ -1,7 +1,11 @@
 import { Metadata } from "next";
 import { getTrendingProducts } from "@/lib/strapi";
+import { resolveListingProducts } from "@/lib/affiliateListing";
 import ProductCard from "@/components/ProductCard";
 import ProductGrid from "@/components/ProductGrid";
+
+/** Listing shop links are resolved per visitor country (Amazon geo). */
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Trending Products",
@@ -34,6 +38,10 @@ interface Product {
   name: string;
   slug: string;
   productCode: string;
+  sourcePlatform?: string;
+  sourceUrl?: string;
+  affiliateLinks?: Array<{ platform: string; url: string; isActive?: boolean }>;
+  affiliateHref?: string;
   shortDescription?: string;
   trendScore?: number;
   rating?: number;
@@ -65,7 +73,9 @@ export default async function TrendingPage() {
   let products: Product[] = [];
 
   try {
-    products = (await getTrendingProducts()) as Product[];
+    products = await resolveListingProducts(
+      (await getTrendingProducts()) as Product[],
+    );
   } catch {
     // Strapi may not be running
   }
@@ -128,6 +138,8 @@ export default async function TrendingPage() {
                   name={product.name}
                   slug={product.slug}
                   productCode={product.productCode}
+                  sourcePlatform={product.sourcePlatform}
+                  affiliateHref={product.affiliateHref!}
                   shortDescription={product.shortDescription}
                   imageUrl={primaryImage?.url}
                   pricePoints={product.pricePoints}

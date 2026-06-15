@@ -3,10 +3,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getCategory, getProducts, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
+import { resolveListingProducts } from "@/lib/affiliateListing";
 import ProductCard from "@/components/ProductCard";
 import ProductGrid from "@/components/ProductGrid";
 import CategoryBrowseTracker from "@/components/CategoryBrowseTracker";
 import CategoryIcon from "@/components/CategoryIcon";
+
+/** Listing shop links are resolved per visitor country (Amazon geo). */
+export const dynamic = "force-dynamic";
 
 interface MediaItem {
   url: string;
@@ -20,6 +24,10 @@ interface Product {
   name: string;
   slug: string;
   productCode: string;
+  sourcePlatform?: string;
+  sourceUrl?: string;
+  affiliateLinks?: Array<{ platform: string; url: string; isActive?: boolean }>;
+  affiliateHref?: string;
   shortDescription?: string;
   trendScore?: number;
   rating?: number;
@@ -115,7 +123,9 @@ export default async function CategoryPage({ params }: PageProps) {
   ]);
   if (!category) notFound();
 
-  const products = (productsRes.data || []) as Product[];
+  const products = await resolveListingProducts(
+    (productsRes.data || []) as Product[],
+  );
   const accent = accentMap[category.color || "purple"] || accentMap.purple;
 
   return (
@@ -201,6 +211,8 @@ export default async function CategoryPage({ params }: PageProps) {
                   name={product.name}
                   slug={product.slug}
                   productCode={product.productCode}
+                  sourcePlatform={product.sourcePlatform}
+                  affiliateHref={product.affiliateHref!}
                   shortDescription={product.shortDescription}
                   imageUrl={primaryImage?.url}
                   pricePoints={product.pricePoints}

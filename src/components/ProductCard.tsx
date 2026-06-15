@@ -25,6 +25,7 @@ interface ProductCardProps {
   slug: string;
   productCode: string;
   sourcePlatform?: string;
+  affiliateHref: string;
   shortDescription?: string;
   imageUrl?: string;
   pricePoints?: PricePoint[];
@@ -39,6 +40,7 @@ export default function ProductCard({
   slug,
   productCode,
   sourcePlatform,
+  affiliateHref,
   shortDescription,
   imageUrl,
   pricePoints,
@@ -143,7 +145,11 @@ export default function ProductCard({
 
         {/* CTA — z-2 so it sits above the stretched card link */}
         <div className='relative z-2'>
-          <ListingCtaButton productCode={productCode} platform={sourcePlatform || 'amazon'} />
+          <ListingCtaButton
+            productCode={productCode}
+            platform={sourcePlatform || 'other'}
+            href={affiliateHref}
+          />
         </div>
       </div>
     </div>

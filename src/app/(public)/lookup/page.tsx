@@ -12,6 +12,7 @@ interface Product {
   name: string;
   slug: string;
   productCode: string;
+  sourcePlatform?: string;
   shortDescription?: string;
   trendScore?: number;
   rating?: number;
@@ -26,6 +27,7 @@ function LookupContent() {
   const initialCode = searchParams.get("code") || "";
 
   const [product, setProduct] = useState<Product | null>(null);
+  const [affiliateHref, setAffiliateHref] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [searchedCode, setSearchedCode] = useState("");
@@ -35,6 +37,7 @@ function LookupContent() {
     setLoading(true);
     setSearched(true);
     setSearchedCode(code);
+    setAffiliateHref(null);
 
     try {
       const strapiUrl =
@@ -47,6 +50,16 @@ function LookupContent() {
         const found = data?.data || null;
         setProduct(found);
         trackSearch(code, found ? 1 : 0);
+
+        if (found?.productCode) {
+          const resolveRes = await fetch(
+            `/api/affiliate/resolve?code=${encodeURIComponent(found.productCode)}`,
+          );
+          if (resolveRes.ok) {
+            const { url } = await resolveRes.json();
+            setAffiliateHref(url);
+          }
+        }
       } else {
         setProduct(null);
         trackSearch(code, 0);
@@ -118,18 +131,26 @@ function LookupContent() {
                 </div>
 
                 <div className="max-w-sm">
-                  <ProductCard
-                    name={product.name}
-                    slug={product.slug}
-                    productCode={product.productCode}
-                    shortDescription={product.shortDescription}
-                    imageUrl={primaryImage?.url}
-                    pricePoints={product.pricePoints}
-                    categories={product.categories}
-                    rating={product.rating}
-                    reviewCount={product.reviewCount}
-                    trendScore={product.trendScore}
-                  />
+                  {affiliateHref ? (
+                    <ProductCard
+                      name={product.name}
+                      slug={product.slug}
+                      productCode={product.productCode}
+                      sourcePlatform={product.sourcePlatform}
+                      affiliateHref={affiliateHref}
+                      shortDescription={product.shortDescription}
+                      imageUrl={primaryImage?.url}
+                      pricePoints={product.pricePoints}
+                      categories={product.categories}
+                      rating={product.rating}
+                      reviewCount={product.reviewCount}
+                      trendScore={product.trendScore}
+                    />
+                  ) : (
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-sm text-gray-400">
+                      Loading shop link…
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

@@ -152,7 +152,7 @@ export async function getProductsByCodes(codes: string[]): Promise<Record<string
 
 export async function getProducts(options: FetchOptions = {}) {
   const res = await fetchStrapi<unknown[]>('/products', {
-    populate: ['categories', 'media', 'pricePoints', 'featuredImage'],
+    populate: ['categories', 'media', 'pricePoints', 'featuredImage', 'affiliateLinks'],
     ...options,
   });
 
@@ -208,7 +208,7 @@ export async function getTrendingProducts() {
     filters: { ...PUBLISHED_PRODUCT_FILTER },
     sort: ['trendScore:desc'],
     pagination: { pageSize: 24 },
-    populate: ['categories', 'media', 'pricePoints', 'featuredImage'],
+    populate: ['categories', 'media', 'pricePoints', 'featuredImage', 'affiliateLinks'],
   });
 
   if (Array.isArray(res.data)) {

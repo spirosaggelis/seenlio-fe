@@ -1,9 +1,13 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { getCategories, getProducts, PUBLISHED_PRODUCT_FILTER } from '@/lib/strapi';
+import { resolveListingProducts } from '@/lib/affiliateListing';
 import ProductCard from '@/components/ProductCard';
 import ProductGrid from '@/components/ProductGrid';
 import ProductFilterBar, { FilterCategory } from '@/components/ProductFilterBar';
+
+/** Listing shop links are resolved per visitor country (Amazon geo). */
+export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 24;
 
@@ -39,6 +43,9 @@ interface Product {
   slug: string;
   productCode: string;
   sourcePlatform?: string;
+  sourceUrl?: string;
+  affiliateLinks?: Array<{ platform: string; url: string; isActive?: boolean }>;
+  affiliateHref?: string;
   shortDescription?: string;
   trendScore?: number;
   rating?: number;
@@ -118,7 +125,9 @@ export default async function ProductsPage({
       getCategories({ fields: ['id', 'name', 'slug', 'sortOrder'] }),
     ]);
 
-    products = (productsRes.data || []) as Product[];
+    products = await resolveListingProducts(
+      (productsRes.data || []) as Product[],
+    );
     const meta = (productsRes as { meta?: { pagination?: PaginationMeta } }).meta?.pagination;
     if (meta) pagination = meta;
 
@@ -204,6 +213,7 @@ export default async function ProductsPage({
                   slug={product.slug}
                   productCode={product.productCode}
                   sourcePlatform={product.sourcePlatform}
+                  affiliateHref={product.affiliateHref!}
                   shortDescription={product.shortDescription}
                   imageUrl={primaryImage?.url}
                   pricePoints={product.pricePoints}

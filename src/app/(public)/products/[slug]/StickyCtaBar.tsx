@@ -79,7 +79,7 @@ export default function StickyCtaBar({ buttons, productCode, price, productName,
                 key={i}
                 href={btn.href}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel='nofollow sponsored noopener'
                 onClick={() => trackAffiliateClick(productCode, btn.platform, btn.href, 'sticky_bar')}
                 data-product-code={productCode}
                 data-platform={btn.platform}
