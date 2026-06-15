@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { proxyImage } from '@/lib/imageProxy';
 import {
+  pickProductVideo,
+  type PickedVideo,
+  type PublishRecord,
+  type VideoItem,
+} from '@/lib/productVideo';
+import {
   SITE_URL,
   SITEMAP_XML_HEADERS,
   strapiHeaders,
@@ -23,6 +29,54 @@ function escapeXml(s: string): string {
     .replace(/'/g, '&apos;');
 }
 
+function normalizeRelationList<T>(raw: unknown): T[] {
+  if (!raw) return [];
+  const list = Array.isArray(raw) ? raw : ((raw as { data?: unknown[] }).data ?? []);
+  return list.map((row) => unwrapRow<T>(row));
+}
+
+function normalizeVideos(raw: unknown): VideoItem[] {
+  return normalizeRelationList<VideoItem & { publishRecords?: unknown }>(raw).map(
+    (video) => ({
+      ...video,
+      publishRecords: normalizeRelationList<PublishRecord>(video.publishRecords),
+    }),
+  );
+}
+
+function buildVideoSitemapBlock(
+  video: PickedVideo,
+  productName: string,
+  description: string,
+): string {
+  const title = escapeXml((video.title || productName).slice(0, 100));
+  const desc = escapeXml(description.slice(0, 2048));
+  const pubDate = toLastmod(video.uploadDate) ?? new Date().toISOString();
+
+  if (video.kind === 'youtube') {
+    return `
+    <video:video>
+      <video:thumbnail_loc>${escapeXml(video.thumbnailUrl)}</video:thumbnail_loc>
+      <video:title>${title}</video:title>
+      <video:description>${desc}</video:description>
+      <video:player_loc>${escapeXml(video.embedUrl)}</video:player_loc>
+      <video:publication_date>${pubDate}</video:publication_date>
+    </video:video>`;
+  }
+
+  const thumbnail = video.thumbnailUrl || video.poster;
+  if (!thumbnail) return '';
+
+  return `
+    <video:video>
+      <video:thumbnail_loc>${escapeXml(thumbnail)}</video:thumbnail_loc>
+      <video:title>${title}</video:title>
+      <video:description>${desc}</video:description>
+      <video:content_loc>${escapeXml(video.src)}</video:content_loc>
+      <video:publication_date>${pubDate}</video:publication_date>
+    </video:video>`;
+}
+
 interface SitemapMedia {
   url?: string;
   type?: string;
@@ -31,8 +85,40 @@ interface SitemapMedia {
 
 interface SitemapProduct {
   slug: string;
+  name?: string;
+  shortDescription?: string;
+  description?: string;
   updatedAt?: string;
   media?: SitemapMedia[];
+  videos?: unknown;
+}
+
+function productSitemapQuery(page: number, startDate: string, endDate: string): string {
+  const params = new URLSearchParams({
+    'fields[0]': 'slug',
+    'fields[1]': 'updatedAt',
+    'fields[2]': 'name',
+    'fields[3]': 'shortDescription',
+    'fields[4]': 'description',
+    'pagination[pageSize]': '100',
+    'pagination[page]': String(page),
+    'filters[productStatus][$eq]': 'published',
+    'filters[createdAt][$gte]': startDate,
+    'filters[createdAt][$lte]': endDate,
+    'populate[media][fields][0]': 'url',
+    'populate[media][fields][1]': 'type',
+    'populate[media][fields][2]': 'isPrimary',
+    'populate[videos][fields][0]': 'title',
+    'populate[videos][fields][1]': 'storageUrl',
+    'populate[videos][fields][2]': 'thumbnailUrl',
+    'populate[videos][fields][3]': 'createdAt',
+    'populate[videos][fields][4]': 'generatedAt',
+    'populate[videos][populate][publishRecords][fields][0]': 'platform',
+    'populate[videos][populate][publishRecords][fields][1]': 'publishStatus',
+    'populate[videos][populate][publishRecords][fields][2]': 'externalUrl',
+    'populate[videos][populate][publishRecords][fields][3]': 'publishedAt',
+  });
+  return params.toString();
 }
 
 export async function GET(request: Request, context: { params: { id: string } | Promise<{ id: string }> }) {
@@ -60,8 +146,8 @@ export async function GET(request: Request, context: { params: { id: string } | 
 
     while (hasMore) {
       const productsRes = await fetch(
-        `${STRAPI_URL}/api/products?fields[0]=slug&fields[1]=updatedAt&populate[media][fields][0]=url&populate[media][fields][1]=type&populate[media][fields][2]=isPrimary&pagination[pageSize]=100&pagination[page]=${page}&filters[productStatus][$eq]=published&filters[createdAt][$gte]=${startDate}&filters[createdAt][$lte]=${endDate}`,
-        { headers, next: { revalidate: SITEMAP_REVALIDATE } }
+        `${STRAPI_URL}/api/products?${productSitemapQuery(page, startDate, endDate)}`,
+        { headers, next: { revalidate: SITEMAP_REVALIDATE } },
       );
 
       if (!productsRes.ok) break;
@@ -88,6 +174,27 @@ export async function GET(request: Request, context: { params: { id: string } | 
     <loc>${SITE_URL}/products/${product.slug}</loc>${lastmodXml(toLastmod(product.updatedAt))}
     <priority>0.8</priority>${imageBlocks}
   </url>`;
+
+        const productVideo = pickProductVideo(normalizeVideos(product.videos));
+        if (productVideo) {
+          const videoDescription =
+            product.shortDescription ||
+            product.description ||
+            product.name ||
+            'Viral product short on Seenlio';
+          const videoBlock = buildVideoSitemapBlock(
+            productVideo,
+            product.name || product.slug,
+            videoDescription,
+          );
+          if (videoBlock) {
+            urls += `
+  <url>
+    <loc>${SITE_URL}/products/${product.slug}/watch</loc>${lastmodXml(toLastmod(productVideo.uploadDate))}
+    <priority>0.6</priority>${videoBlock}
+  </url>`;
+          }
+        }
       }
 
       const pagination = productsData?.meta?.pagination;
@@ -102,7 +209,7 @@ export async function GET(request: Request, context: { params: { id: string } | 
   }
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">${urls}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">${urls}
 </urlset>`;
 
   return new NextResponse(xml, { headers: SITEMAP_XML_HEADERS });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState, useTransition } from 'react';
+import { useCallback, useState, useTransition } from 'react';
 import CategoryIcon from '@/components/CategoryIcon';
 
 export interface FilterCategory {
@@ -11,18 +11,20 @@ export interface FilterCategory {
 }
 
 type SortKey = 'trend' | 'new' | 'price-asc' | 'price-desc' | 'rating';
+type SourceKey = 'amazon' | 'aliexpress' | 'temu';
 
 export interface ProductFilterBarProps {
   categories: FilterCategory[];
   totalResults: number;
   currentCategory: string;
   currentPrice: string;
+  currentSource: string;
   currentSort: SortKey;
 }
 
 const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
-  { value: 'trend', label: 'Trending' },
   { value: 'new', label: 'Newest' },
+  { value: 'trend', label: 'Trending' },
   { value: 'price-asc', label: 'Price: Low → High' },
   { value: 'price-desc', label: 'Price: High → Low' },
   { value: 'rating', label: 'Top Rated' },
@@ -35,25 +37,36 @@ const PRICE_BUCKETS: Array<{ value: string; label: string }> = [
   { value: '100-', label: '$100+' },
 ];
 
+const SOURCE_OPTIONS: Array<{ value: SourceKey; label: string }> = [
+  { value: 'amazon', label: 'Amazon' },
+  { value: 'aliexpress', label: 'AliExpress' },
+  { value: 'temu', label: 'Temu' },
+];
+
 export default function ProductFilterBar({
   categories,
   totalResults,
   currentCategory,
   currentPrice,
+  currentSource,
   currentSort,
 }: ProductFilterBarProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const activeCount = (currentCategory ? 1 : 0) + (currentPrice ? 1 : 0);
+  const activeCount =
+    (currentCategory ? 1 : 0) +
+    (currentPrice ? 1 : 0) +
+    (currentSource ? 1 : 0);
 
   const applyParam = useCallback(
     (key: string, value: string | null) => {
       const params = new URLSearchParams();
       if (currentCategory) params.set('category', currentCategory);
       if (currentPrice) params.set('price', currentPrice);
-      if (currentSort !== 'trend') params.set('sort', currentSort);
+      if (currentSource) params.set('source', currentSource);
+      if (currentSort !== 'new') params.set('sort', currentSort);
       if (!value) {
         params.delete(key);
       } else {
@@ -65,7 +78,7 @@ export default function ProductFilterBar({
         router.push(qs ? `/products?${qs}` : '/products', { scroll: false });
       });
     },
-    [router, currentCategory, currentPrice, currentSort],
+    [router, currentCategory, currentPrice, currentSource, currentSort],
   );
 
   const clearAll = () => {
@@ -83,31 +96,42 @@ export default function ProductFilterBar({
     applyParam('price', currentPrice === bucket ? null : bucket);
   };
 
-  const onSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const v = e.target.value as SortKey;
-    applyParam('sort', v === 'trend' ? null : v);
+  const toggleSource = (source: SourceKey) => {
+    applyParam('source', currentSource === source ? null : source);
   };
 
-  const sortLabel = useMemo(
-    () =>
-      SORT_OPTIONS.find((o) => o.value === currentSort)?.label ?? 'Trending',
-    [currentSort],
-  );
+  const onSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const v = e.target.value as SortKey;
+    applyParam('sort', v === 'new' ? null : v);
+  };
+
+  const chipBase =
+    'shrink-0 font-medium transition whitespace-nowrap border rounded-full';
+  const chipActive = 'bg-purple-500/20 border-purple-400/60 text-white';
+  const chipIdle =
+    'border-white/10 text-gray-300 hover:border-purple-400/40 hover:text-purple-200';
+
+  const filterChip = (active: boolean, color: 'orange' | 'cyan') =>
+    active
+      ? color === 'orange'
+        ? 'bg-orange-500/20 border-orange-400/60 text-white'
+        : 'bg-cyan-500/20 border-cyan-400/60 text-white'
+      : color === 'orange'
+        ? 'border-white/10 text-gray-300 hover:border-orange-400/40 hover:text-orange-200'
+        : 'border-white/10 text-gray-300 hover:border-cyan-400/40 hover:text-cyan-200';
 
   return (
     <>
       {/* ── Desktop / tablet bar ───────────────────────────── */}
-      <div className='hidden sm:block mb-8'>
-        <div className='rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-sm p-4'>
+      <div className='hidden sm:block mb-4'>
+        <div className='rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-sm p-3'>
           {/* Category chips */}
-          <div className='flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin'>
+          <div className='flex items-center gap-2 overflow-x-auto scrollbar-thin'>
             <button
               type='button'
               onClick={() => applyParam('category', null)}
-              className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition whitespace-nowrap border ${
-                !currentCategory
-                  ? 'bg-purple-500/20 border-purple-400/60 text-white'
-                  : 'border-white/10 text-gray-300 hover:border-purple-400/40 hover:text-purple-200'
+              className={`${chipBase} px-4 py-2 text-sm ${
+                !currentCategory ? chipActive : chipIdle
               }`}
             >
               All
@@ -119,10 +143,8 @@ export default function ProductFilterBar({
                   key={cat.id}
                   type='button'
                   onClick={() => toggleCategory(cat.slug)}
-                  className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition whitespace-nowrap border ${
-                    active
-                      ? 'bg-purple-500/20 border-purple-400/60 text-white'
-                      : 'border-white/10 text-gray-300 hover:border-purple-400/40 hover:text-purple-200'
+                  className={`${chipBase} inline-flex items-center gap-2 px-4 py-2 text-sm ${
+                    active ? chipActive : chipIdle
                   }`}
                 >
                   <span className='w-4 h-4 inline-block'>
@@ -134,31 +156,51 @@ export default function ProductFilterBar({
             })}
           </div>
 
-          {/* Price + Sort row */}
-          <div className='mt-3 flex flex-wrap items-center gap-3 pt-3 border-t border-white/5'>
-            <span className='text-xs uppercase tracking-wider text-gray-500'>
-              Price
-            </span>
-            <div className='flex flex-wrap gap-2'>
-              {PRICE_BUCKETS.map((b) => {
-                const active = currentPrice === b.value;
-                return (
-                  <button
-                    key={b.value}
-                    type='button'
-                    onClick={() => togglePrice(b.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${
-                      active
-                        ? 'bg-cyan-500/20 border-cyan-400/60 text-white'
-                        : 'border-white/10 text-gray-300 hover:border-cyan-400/40 hover:text-cyan-200'
-                    }`}
-                  >
-                    {b.label}
-                  </button>
-                );
-              })}
+          {/* Source + Price + Sort — single compact row */}
+          <div className='mt-2 pt-2 border-t border-white/5 flex flex-wrap items-center gap-x-4 gap-y-2'>
+            <div className='flex items-center gap-2'>
+              <span className='text-xs uppercase tracking-wider text-gray-500 shrink-0'>
+                Source
+              </span>
+              <div className='flex items-center gap-2'>
+                {SOURCE_OPTIONS.map((s) => {
+                  const active = currentSource === s.value;
+                  return (
+                    <button
+                      key={s.value}
+                      type='button'
+                      onClick={() => toggleSource(s.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${filterChip(active, 'orange')}`}
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className='ml-auto flex items-center gap-2'>
+
+            <div className='flex items-center gap-2 border-l border-white/10 pl-6 ml-2'>
+              <span className='text-xs uppercase tracking-wider text-gray-500 shrink-0'>
+                Price
+              </span>
+              <div className='flex flex-wrap items-center gap-2'>
+                {PRICE_BUCKETS.map((b) => {
+                  const active = currentPrice === b.value;
+                  return (
+                    <button
+                      key={b.value}
+                      type='button'
+                      onClick={() => togglePrice(b.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${filterChip(active, 'cyan')}`}
+                    >
+                      {b.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className='ml-auto flex items-center gap-2 shrink-0'>
               {activeCount > 0 && (
                 <button
                   type='button'
@@ -186,7 +228,7 @@ export default function ProductFilterBar({
           </div>
         </div>
         {isPending && (
-          <div className='mt-2 text-xs text-purple-300/60 animate-pulse'>
+          <div className='mt-1.5 text-xs text-purple-300/60 animate-pulse'>
             Updating…
           </div>
         )}
@@ -235,7 +277,7 @@ export default function ProductFilterBar({
         </div>
 
         {/* Active filter summary as horizontally scrolling chips */}
-        {(currentCategory || currentPrice) && (
+        {(currentCategory || currentPrice || currentSource) && (
           <div className='mt-3 flex gap-2 overflow-x-auto'>
             {currentCategory && (
               <button
@@ -257,6 +299,17 @@ export default function ProductFilterBar({
                 {PRICE_BUCKETS.find((p) => p.value === currentPrice)?.label ??
                   currentPrice}
                 <span className='text-cyan-300'>×</span>
+              </button>
+            )}
+            {currentSource && (
+              <button
+                type='button'
+                onClick={() => applyParam('source', null)}
+                className='shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-orange-500/20 border border-orange-400/40 text-orange-100 text-xs'
+              >
+                {SOURCE_OPTIONS.find((s) => s.value === currentSource)?.label ??
+                  currentSource}
+                <span className='text-orange-300'>×</span>
               </button>
             )}
           </div>
@@ -363,6 +416,31 @@ export default function ProductFilterBar({
 
             <section className='mb-6'>
               <h4 className='text-xs uppercase tracking-wider text-gray-500 mb-3'>
+                Source
+              </h4>
+              <div className='grid grid-cols-3 gap-2'>
+                {SOURCE_OPTIONS.map((s) => {
+                  const active = currentSource === s.value;
+                  return (
+                    <button
+                      key={s.value}
+                      type='button'
+                      onClick={() => toggleSource(s.value)}
+                      className={`px-3 py-3 rounded-lg text-sm border transition ${
+                        active
+                          ? 'bg-orange-500/25 border-orange-400/70 text-white'
+                          : 'border-white/15 text-gray-300 hover:border-orange-400/40'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className='mb-6'>
+              <h4 className='text-xs uppercase tracking-wider text-gray-500 mb-3'>
                 Price
               </h4>
               <div className='grid grid-cols-2 gap-2'>
@@ -398,7 +476,7 @@ export default function ProductFilterBar({
                       key={o.value}
                       type='button'
                       onClick={() =>
-                        applyParam('sort', o.value === 'trend' ? null : o.value)
+                        applyParam('sort', o.value === 'new' ? null : o.value)
                       }
                       className={`text-left px-3 py-3 rounded-lg text-sm border transition ${
                         active
@@ -424,16 +502,6 @@ export default function ProductFilterBar({
           </div>
         </div>
       )}
-
-      {/* Current sort label as a subtle badge (desktop only) */}
-      <div className='hidden sm:block -mt-4 mb-6 text-xs text-gray-500'>
-        Sorted: <span className='text-gray-300'>{sortLabel}</span>
-        {activeCount > 0 && (
-          <span className='ml-2'>
-            · {activeCount} filter{activeCount > 1 ? 's' : ''} active
-          </span>
-        )}
-      </div>
     </>
   );
 }

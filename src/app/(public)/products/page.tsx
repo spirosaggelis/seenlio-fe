@@ -14,18 +14,18 @@ const PAGE_SIZE = 24;
 export const metadata: Metadata = {
   title: 'All Products',
   description:
-    'Browse all trending products featured in viral videos. Sorted by trend score.',
+    'Browse all trending products featured in viral videos. Sorted by newest published.',
   alternates: { canonical: '/products' },
   openGraph: {
     title: 'All Products',
-    description: 'Browse all trending products featured in viral videos. Sorted by trend score.',
+    description: 'Browse all trending products featured in viral videos. Sorted by newest published.',
     url: '/products',
     images: [{ url: '/logo.png' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'All Products',
-    description: 'Browse all trending products featured in viral videos. Sorted by trend score.',
+    description: 'Browse all trending products featured in viral videos. Sorted by newest published.',
     images: ['/logo.png'],
   },
 };
@@ -67,10 +67,13 @@ interface PaginationMeta {
 }
 
 type SortKey = 'trend' | 'new' | 'price-asc' | 'price-desc' | 'rating';
+type SourceKey = 'amazon' | 'aliexpress' | 'temu';
+
+const VALID_SOURCES: SourceKey[] = ['amazon', 'aliexpress', 'temu'];
 
 const SORT_MAP: Record<SortKey, string[]> = {
   trend: ['trendScore:desc'],
-  new: ['createdAt:desc'],
+  new: ['sitePublishedAt:desc', 'createdAt:desc'],
   'price-asc': ['pricePoints.price:asc'],
   'price-desc': ['pricePoints.price:desc'],
   rating: ['rating:desc', 'reviewCount:desc'],
@@ -91,22 +94,34 @@ function buildPriceFilter(bucket: string | undefined): Record<string, unknown> |
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; category?: string; price?: string; sort?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    category?: string;
+    price?: string;
+    sort?: string;
+    source?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
   const categorySlug = sp.category?.trim() || '';
   const priceBucket = sp.price?.trim() || '';
+  const sourcePlatform = VALID_SOURCES.includes(sp.source as SourceKey)
+    ? (sp.source as SourceKey)
+    : '';
   const sortKey: SortKey = (['trend', 'new', 'price-asc', 'price-desc', 'rating'] as const).includes(
     sp.sort as SortKey,
   )
     ? (sp.sort as SortKey)
-    : 'trend';
+    : 'new';
 
   // Build Strapi filter payload
   const filters: Record<string, unknown> = { ...PUBLISHED_PRODUCT_FILTER };
   if (categorySlug) {
     filters.categories = { slug: { $eq: categorySlug } };
+  }
+  if (sourcePlatform) {
+    filters.sourcePlatform = { $eq: sourcePlatform };
   }
   const priceFilter = buildPriceFilter(priceBucket);
   if (priceFilter) Object.assign(filters, priceFilter);
@@ -151,7 +166,8 @@ export default async function ProductsPage({
     const params = new URLSearchParams();
     if (categorySlug) params.set('category', categorySlug);
     if (priceBucket) params.set('price', priceBucket);
-    if (sortKey !== 'trend') params.set('sort', sortKey);
+    if (sourcePlatform) params.set('source', sourcePlatform);
+    if (sortKey !== 'new') params.set('sort', sortKey);
     if (p > 1) params.set('page', String(p));
     const qs = params.toString();
     return qs ? `/products?${qs}` : '/products';
@@ -161,7 +177,7 @@ export default async function ProductsPage({
     <div className='bg-[#0a0a0f]'>
       <div className='mx-auto max-w-7xl px-4 pt-16 pb-8'>
         {/* Page header */}
-        <div className='mb-8'>
+        <div className='mb-5 sm:mb-4'>
           <div className='flex items-baseline flex-wrap gap-x-4 gap-y-2'>
             <h1 className='text-4xl sm:text-5xl font-extrabold tracking-tight'>
               <span className='bg-linear-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent'>
@@ -174,7 +190,7 @@ export default async function ProductsPage({
               </span>
             )}
           </div>
-          <div className='mt-4 h-px bg-linear-to-r from-purple-500/50 via-cyan-500/30 to-transparent' />
+          <div className='mt-3 h-px bg-linear-to-r from-purple-500/50 via-cyan-500/30 to-transparent' />
         </div>
 
         {/* Filters */}
@@ -183,6 +199,7 @@ export default async function ProductsPage({
           totalResults={total}
           currentCategory={categorySlug}
           currentPrice={priceBucket}
+          currentSource={sourcePlatform}
           currentSort={sortKey}
         />
 
@@ -190,7 +207,7 @@ export default async function ProductsPage({
         <ProductGrid
           isEmpty={products.length === 0}
           emptyMessage={
-            categorySlug || priceBucket
+            categorySlug || priceBucket || sourcePlatform
               ? 'No products match these filters. Try clearing one.'
               : 'No products available yet'
           }

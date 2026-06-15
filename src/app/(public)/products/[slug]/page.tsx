@@ -20,6 +20,10 @@ import ProductViewTracker from "./ProductViewTracker";
 import StickyCtaBar from "./StickyCtaBar";
 import AffiliateButton from "./AffiliateButton";
 import type { AffiliatePattern } from "@/lib/affiliateTypes";
+import {
+  pickProductVideo,
+  type VideoItem,
+} from "@/lib/productVideo";
 
 /** Affiliate hrefs depend on visitor geo (Amazon EU storefront). Must not be statically cached. */
 export const dynamic = "force-dynamic";
@@ -53,24 +57,6 @@ interface Category {
   isActive?: boolean;
 }
 
-interface PublishRecord {
-  platform: string;
-  publishStatus?: string;
-  externalUrl?: string;
-  externalId?: string;
-  publishedAt?: string;
-}
-
-interface VideoItem {
-  id: number;
-  title?: string;
-  storageUrl?: string;
-  thumbnailUrl?: string;
-  aspectRatio?: string;
-  createdAt?: string;
-  publishRecords?: PublishRecord[];
-}
-
 interface ProductData {
   id: number;
   name: string;
@@ -92,56 +78,6 @@ interface ProductData {
     metaTitle?: string;
     metaDescription?: string;
   };
-}
-
-function extractYoutubeId(url: string): string | null {
-  const patterns = [
-    /youtu\.be\/([A-Za-z0-9_-]{11})/,
-    /youtube\.com\/watch\?v=([A-Za-z0-9_-]{11})/,
-    /youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/,
-    /youtube\.com\/embed\/([A-Za-z0-9_-]{11})/,
-  ];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m) return m[1];
-  }
-  return null;
-}
-
-type PickedVideo =
-  | { kind: 'youtube'; id: string; title?: string }
-  | { kind: 'native'; src: string; poster?: string; aspectRatio?: string; title?: string };
-
-function pickProductVideo(videos: VideoItem[] | undefined): PickedVideo | null {
-  if (!videos || videos.length === 0) return null;
-
-  const sorted = [...videos].sort((a, b) =>
-    (a.createdAt ?? '').localeCompare(b.createdAt ?? ''),
-  );
-
-  for (const v of sorted) {
-    const yt = v.publishRecords?.find(
-      (r) =>
-        r.platform === 'youtube' &&
-        (r.publishStatus === 'published' || !!r.externalUrl),
-    );
-    if (yt?.externalUrl) {
-      const id = extractYoutubeId(yt.externalUrl);
-      if (id) return { kind: 'youtube', id, title: v.title };
-    }
-  }
-
-  const first = sorted[0];
-  if (first?.storageUrl) {
-    return {
-      kind: 'native',
-      src: first.storageUrl,
-      poster: first.thumbnailUrl,
-      aspectRatio: first.aspectRatio,
-      title: first.title,
-    };
-  }
-  return null;
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -555,7 +491,7 @@ export default async function ProductPage({ params }: PageProps) {
                       {productVideo.kind === 'youtube' ? (
                         <iframe
                           className="absolute inset-0 w-full h-full"
-                          src={`https://www.youtube.com/embed/${productVideo.id}?rel=0&modestbranding=1`}
+                          src={`${productVideo.embedUrl}?rel=0&modestbranding=1`}
                           title={productVideo.title || product.name}
                           loading="lazy"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -572,6 +508,14 @@ export default async function ProductPage({ params }: PageProps) {
                         />
                       )}
                     </div>
+                  </div>
+                  <div className='mt-3 text-center'>
+                    <Link
+                      href={`/products/${product.slug}/watch`}
+                      className='text-xs font-medium text-purple-300 hover:text-purple-200 transition-colors'
+                    >
+                      Open watch page →
+                    </Link>
                   </div>
                 </div>
               )}
