@@ -13,6 +13,7 @@ import SectionHeader from "@/components/SectionHeader";
 import ProductViewTracker from "./ProductViewTracker";
 import StickyCtaBar from "./StickyCtaBar";
 import AffiliateButton from "./AffiliateButton";
+import type { AffiliatePattern } from "@/lib/affiliateTypes";
 
 interface AffiliateLink {
   platform: string;
@@ -142,16 +143,6 @@ const PLATFORM_LABELS: Record<string, string> = {
   other: "Store",
 };
 
-interface AffiliatePattern {
-  platform: string;
-  paramName: string;
-  paramValue: string;
-  regionalTags?: Record<string, string>;
-  extraParams?: Record<string, string>;
-  useGeoRedirect?: boolean;
-  isActive?: boolean;
-}
-
 function buildAffiliateUrl(baseUrl: string, productCode: string, platform: string): string {
   const url = new URL(baseUrl);
   url.searchParams.set('utm_source', 'seenlio');
@@ -173,6 +164,11 @@ function buildBuyHref(
   productCode: string,
   patterns: AffiliatePattern[],
 ): string {
+  // Route Temu through /go/ so clicks use affiliateLinks (temu.to) when available.
+  if (platform === "temu") {
+    return `/go/${productCode}`;
+  }
+
   const pattern = patterns.find(
     (p) => p.platform === platform && p.isActive !== false,
   );

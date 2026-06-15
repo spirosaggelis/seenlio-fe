@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import GoRedirectClient from './GoRedirectClient';
+import type { AffiliatePattern } from '@/lib/affiliateTypes';
+import { resolveTemuDestinationUrl } from '@/lib/temuAffiliate';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -75,16 +77,6 @@ const EU_COUNTRIES = new Set([
 ]);
 
 // ── Types ──────────────────────────────────────────────────────────────────
-
-interface AffiliatePattern {
-  platform: string;
-  paramName: string;
-  paramValue: string;
-  regionalTags?: Record<string, string>;
-  extraParams?: Record<string, string>;
-  useGeoRedirect?: boolean;
-  isActive?: boolean;
-}
 
 interface PricePoint {
   price: number;
@@ -251,6 +243,10 @@ async function buildDestinationUrl(
   const pattern = patterns.find(
     (p) => p.platform === platform && p.isActive !== false,
   );
+
+  if (platform === 'temu') {
+    return resolveTemuDestinationUrl(rawUrl, pattern, product.productCode);
+  }
 
   if (platform === 'amazon' && pattern?.useGeoRedirect) {
     const asin = extractAsin(rawUrl);

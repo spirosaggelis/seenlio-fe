@@ -54,7 +54,7 @@ function parseProductUrl(raw: string): ParsedUrl | null {
     return {
       platform: 'temu',
       externalId: goodsId,
-      cleanUrl: `https://www.temu.com/goods.html?goods_id=${goodsId}`,
+      cleanUrl: `https://www.temu.com/kuiper/uk1.html?subj=goods-detail&_bg_fs=1&goods_id=${goodsId}`,
     };
   }
 
