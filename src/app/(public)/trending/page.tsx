@@ -4,8 +4,8 @@ import { resolveListingProducts } from "@/lib/affiliateListing";
 import ProductCard from "@/components/ProductCard";
 import ProductGrid from "@/components/ProductGrid";
 
-/** Listing shop links are resolved per visitor country (Amazon geo). */
-export const dynamic = "force-dynamic";
+/** Shop CTAs resolve geo on /go/[code]; page HTML can be cached. */
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Trending Products",

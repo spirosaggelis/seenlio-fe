@@ -29,6 +29,7 @@ export type DataLayerEvent =
   | { event: 'page_view'; page_path: string; page_title?: string }
   | { event: 'product_view'; product_code: string; page_path: string }
   | { event: 'affiliate_click'; product_code: string; platform: string; url: string; click_source: string }
+  | { event: 'generate_lead'; product_code: string; platform: string; url: string; click_source: string }
   | { event: 'search'; query: string; results_count: number }
   | { event: 'category_browse'; category_slug: string }
   | {

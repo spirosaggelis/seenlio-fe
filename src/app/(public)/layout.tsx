@@ -5,6 +5,8 @@ import ScrollToTop from '@/components/ScrollToTop';
 import MobileMenu from '@/components/MobileMenu';
 import ChannelMatrix from '@/components/ChannelMatrix';
 import LivePulse from '@/components/LivePulse';
+import GtmSnippet from '@/components/GtmSnippet';
+import GtmNoscript from '@/components/GtmNoscript';
 
 export const metadata: Metadata = {
   title: {
@@ -170,6 +172,8 @@ export default function PublicLayout({
 }) {
   return (
     <>
+      <GtmSnippet />
+      <GtmNoscript />
       <NavBar />
       <div className='h-[72px]' />
       <main className='min-h-[calc(100vh-72px)]'>{children}</main>

@@ -25,6 +25,14 @@ export function trackAffiliateClick(
     url,
     click_source: clickSource,
   });
+  // GA4 recommended event so it can be marked as a key event
+  pushToDataLayer({
+    event: 'generate_lead',
+    product_code: productCode,
+    platform,
+    url,
+    click_source: clickSource,
+  });
 }
 
 /** Search submitted */

@@ -3,8 +3,6 @@ import { Inter } from 'next/font/google';
 import { ConsentProvider } from '@/providers/ConsentProvider';
 import CookieConsent from '@/components/CookieConsent';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
-import GtmScript from '@/components/GtmScript';
-import GtmNoscript from '@/components/GtmNoscript';
 import AnalyticsConsole from '@/components/AnalyticsConsole';
 import './globals.css';
 
@@ -46,12 +44,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en' className='dark' suppressHydrationWarning>
-      <head>
-        <GtmScript />
-      </head>
       <body className={`${inter.variable} antialiased`}>
         <ServiceWorkerRegister />
-        <GtmNoscript />
         <ConsentProvider>
           {children}
           <CookieConsent />
