@@ -6,8 +6,8 @@ import ProductGrid from '@/components/ProductGrid';
 import ProductFilterBar, { FilterCategory } from '@/components/ProductFilterBar';
 import PaginationNav from '@/components/PaginationNav';
 
-/** Listing shop links are resolved per visitor country (Amazon geo). */
-export const dynamic = 'force-dynamic';
+/** Shop CTAs resolve geo on /go/[code]; page HTML can be cached. */
+export const revalidate = 300;
 
 const PAGE_SIZE = 24;
 

@@ -1,13 +1,8 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
-import { getProduct, getProducts, getSettings, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
+import { getProduct, getProducts, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
 import { proxyImage } from "@/lib/imageProxy";
-import {
-  buildAffiliateDestinationUrl,
-  getVisitorCountry,
-} from "@/lib/affiliateDestination";
 import { resolveListingProducts } from "@/lib/affiliateListing";
 import TrendBadge from "@/components/TrendBadge";
 import PriceDisplay from "@/components/PriceDisplay";
@@ -19,14 +14,19 @@ import SectionHeader from "@/components/SectionHeader";
 import ProductViewTracker from "./ProductViewTracker";
 import StickyCtaBar from "./StickyCtaBar";
 import AffiliateButton from "./AffiliateButton";
-import type { AffiliatePattern } from "@/lib/affiliateTypes";
 import {
   pickProductVideo,
   type VideoItem,
 } from "@/lib/productVideo";
+import {
+  affiliateGoHref,
+  breadcrumbJsonLd,
+  offerValidUntil,
+  productEditorialIntro,
+} from "@/lib/productSeo";
 
-/** Affiliate hrefs depend on visitor geo (Amazon EU storefront). Must not be statically cached. */
-export const dynamic = "force-dynamic";
+/** Cached HTML for Googlebot; shop CTAs resolve geo on /go/[code]. */
+export const revalidate = 3600;
 
 interface AffiliateLink {
   platform: string;
@@ -177,24 +177,8 @@ const platformIcons: Record<string, string> = {
 
 export default async function ProductPage({ params }: PageProps) {
   const { slug } = await params;
-  const reqHeaders = await headers();
-  const country = getVisitorCountry(reqHeaders);
-
-  const [product, settings] = await Promise.all([
-    getProduct(slug) as Promise<ProductData | null>,
-    getSettings(),
-  ]);
+  const product = (await getProduct(slug)) as ProductData | null;
   if (!product) notFound();
-
-  const affiliatePatterns: AffiliatePattern[] =
-    (settings as Record<string, unknown>)?.affiliatePatterns as AffiliatePattern[] ?? [];
-
-  const productInput = {
-    productCode: product.productCode,
-    sourcePlatform: product.sourcePlatform,
-    sourceUrl: product.sourceUrl,
-    affiliateLinks: product.affiliateLinks,
-  };
 
   const productVideo = pickProductVideo(product.videos);
   const currentPrice = product.pricePoints?.[0];
@@ -207,6 +191,7 @@ export default async function ProductPage({ params }: PageProps) {
   );
   const activeLinks =
     product.affiliateLinks?.filter((l) => l.isActive !== false) || [];
+  const shopHref = affiliateGoHref(product.productCode);
 
   const ctaButtons: Array<{
     platform: string;
@@ -216,32 +201,21 @@ export default async function ProductPage({ params }: PageProps) {
     icon: string;
   }> =
     activeLinks.length > 0
-      ? await Promise.all(
-          activeLinks.map(async (link) => {
-            const platform = link.platform.toLowerCase();
-            return {
-              platform,
-              href: await buildAffiliateDestinationUrl(
-                productInput,
-                affiliatePatterns,
-                country,
-                { platform, rawUrl: link.url },
-              ),
-              label: `Shop on ${PLATFORM_LABELS[platform] ?? link.platform}`,
-              gradient: platformGradients[platform] ?? platformGradients.default,
-              icon: platformIcons[platform] ?? platformIcons.default,
-            };
-          }),
-        )
+      ? activeLinks.map((link) => {
+          const platform = link.platform.toLowerCase();
+          return {
+            platform,
+            href: shopHref,
+            label: `Shop on ${PLATFORM_LABELS[platform] ?? link.platform}`,
+            gradient: platformGradients[platform] ?? platformGradients.default,
+            icon: platformIcons[platform] ?? platformIcons.default,
+          };
+        })
       : product.sourceUrl
         ? [
             {
               platform: (product.sourcePlatform ?? "other").toLowerCase(),
-              href: await buildAffiliateDestinationUrl(
-                productInput,
-                affiliatePatterns,
-                country,
-              ),
+              href: shopHref,
               label: `Shop on ${PLATFORM_LABELS[(product.sourcePlatform ?? "other").toLowerCase()] ?? "Store"}`,
               gradient:
                 platformGradients[(product.sourcePlatform ?? "other").toLowerCase()] ??
@@ -281,15 +255,18 @@ export default async function ProductPage({ params }: PageProps) {
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com";
+  const editorialIntro = productEditorialIntro(product);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
-    description: product.shortDescription || product.description || product.name,
+    description:
+      `${editorialIntro} ${product.shortDescription || product.description || product.name}`.trim(),
     image: product.media
       ?.filter((m) => m.type !== "video" && m.url)
       .map((m) => proxyImage(m.url)) || [],
     sku: product.productCode,
+    brand: { "@type": "Brand", name: "Seenlio" },
     url: `${siteUrl}/products/${product.slug}`,
     ...(product.rating != null && product.rating > 0
       ? {
@@ -308,17 +285,29 @@ export default async function ProductPage({ params }: PageProps) {
             price: currentPrice.price,
             priceCurrency: currentPrice.currency || "USD",
             availability: "https://schema.org/InStock",
-            url: ctaButtons[0]?.href || `${siteUrl}/products/${product.slug}`,
+            url: `${siteUrl}/products/${product.slug}`,
+            priceValidUntil: offerValidUntil(30),
           },
         }
       : {}),
   };
+  const crumbs = [
+    { name: "Home", path: "/" },
+    ...(activeCategories[0]
+      ? [{ name: activeCategories[0].name, path: `/categories/${activeCategories[0].slug}` }]
+      : [{ name: "Products", path: "/products" }]),
+    { name: product.name, path: `/products/${product.slug}` },
+  ];
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(siteUrl, crumbs)) }}
       />
       {/* Analytics tracker */}
       <ProductViewTracker productCode={product.productCode} />
@@ -430,7 +419,7 @@ export default async function ProductPage({ params }: PageProps) {
         </div>
 
         {/* Description + video — combined section */}
-        {(product.description || productVideo) && (
+        {(editorialIntro || product.description || productVideo) && (
           <div className="mt-10 relative overflow-hidden rounded-3xl border border-white/10 bg-linear-to-br from-[#0f0a1f] via-[#0a0a14] to-[#0a1420]">
             {/* decorative glow blobs */}
             <div
@@ -455,6 +444,10 @@ export default async function ProductPage({ params }: PageProps) {
                   </div>
                 )}
 
+                <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 mb-3">
+                  Why it is trending
+                </h3>
+                <p className="text-gray-300 leading-relaxed mb-4">{editorialIntro}</p>
                 {product.description && (
                   <>
                     <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 mb-3">
