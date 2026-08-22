@@ -3,15 +3,13 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useState, useTransition } from 'react';
 import CategoryIcon from '@/components/CategoryIcon';
+import { listingHref, type SortKey, type SourceKey } from '@/lib/listingQuery';
 
 export interface FilterCategory {
   id: number;
   name: string;
   slug: string;
 }
-
-type SortKey = 'trend' | 'new' | 'price-asc' | 'price-desc' | 'rating';
-type SourceKey = 'amazon' | 'aliexpress' | 'temu';
 
 export interface ProductFilterBarProps {
   categories: FilterCategory[];
@@ -21,6 +19,11 @@ export interface ProductFilterBarProps {
   currentSource: string;
   currentSort: SortKey;
   currentQuery?: string;
+  /** Listing URL this bar should update. Defaults to /products. */
+  basePath?: string;
+  /** Hide category chips (already on a category page). */
+  hideCategory?: boolean;
+  defaultSort?: SortKey;
 }
 
 const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
@@ -52,24 +55,30 @@ export default function ProductFilterBar({
   currentSource,
   currentSort,
   currentQuery = '',
+  basePath = '/products',
+  hideCategory = false,
+  defaultSort = 'new',
 }: ProductFilterBarProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const activeCount =
-    (currentCategory ? 1 : 0) +
+    (hideCategory ? 0 : currentCategory ? 1 : 0) +
     (currentPrice ? 1 : 0) +
     (currentSource ? 1 : 0);
 
   const applyParam = useCallback(
     (key: string, value: string | null) => {
-      const params = new URLSearchParams();
-      if (currentQuery) params.set('q', currentQuery);
-      if (currentCategory) params.set('category', currentCategory);
-      if (currentPrice) params.set('price', currentPrice);
-      if (currentSource) params.set('source', currentSource);
-      if (currentSort !== 'new') params.set('sort', currentSort);
+      const next = listingHref(basePath, {
+        query: currentQuery,
+        category: hideCategory ? '' : currentCategory,
+        price: currentPrice,
+        source: currentSource,
+        sort: currentSort,
+        defaultSort,
+      });
+      const params = new URLSearchParams(next.includes('?') ? next.split('?')[1] : '');
       if (!value) {
         params.delete(key);
       } else {
@@ -78,15 +87,25 @@ export default function ProductFilterBar({
       params.delete('page');
       const qs = params.toString();
       startTransition(() => {
-        router.push(qs ? `/products?${qs}` : '/products', { scroll: false });
+        router.push(qs ? `${basePath}?${qs}` : basePath, { scroll: false });
       });
     },
-    [router, currentQuery, currentCategory, currentPrice, currentSource, currentSort],
+    [
+      router,
+      basePath,
+      hideCategory,
+      currentQuery,
+      currentCategory,
+      currentPrice,
+      currentSource,
+      currentSort,
+      defaultSort,
+    ],
   );
 
   const clearAll = () => {
     startTransition(() => {
-      router.push('/products', { scroll: false });
+      router.push(basePath, { scroll: false });
     });
     setDrawerOpen(false);
   };
@@ -105,7 +124,7 @@ export default function ProductFilterBar({
 
   const onSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const v = e.target.value as SortKey;
-    applyParam('sort', v === 'new' ? null : v);
+    applyParam('sort', v === defaultSort ? null : v);
   };
 
   const chipBase =
@@ -128,39 +147,44 @@ export default function ProductFilterBar({
       {/* ── Desktop / tablet bar ───────────────────────────── */}
       <div className='hidden sm:block mb-4'>
         <div className='rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-sm p-3'>
-          {/* Category chips */}
-          <div className='flex items-center gap-2 overflow-x-auto scrollbar-thin'>
-            <button
-              type='button'
-              onClick={() => applyParam('category', null)}
-              className={`${chipBase} px-4 py-2 text-sm ${
-                !currentCategory ? chipActive : chipIdle
-              }`}
-            >
-              All
-            </button>
-            {categories.map((cat) => {
-              const active = currentCategory === cat.slug;
-              return (
-                <button
-                  key={cat.id}
-                  type='button'
-                  onClick={() => toggleCategory(cat.slug)}
-                  className={`${chipBase} inline-flex items-center gap-2 px-4 py-2 text-sm ${
-                    active ? chipActive : chipIdle
-                  }`}
-                >
-                  <span className='w-4 h-4 inline-block'>
-                    <CategoryIcon slug={cat.slug} className='w-4 h-4' />
-                  </span>
-                  {cat.name}
-                </button>
-              );
-            })}
-          </div>
+          {!hideCategory && (
+            <div className='flex items-center gap-2 overflow-x-auto scrollbar-thin'>
+              <button
+                type='button'
+                onClick={() => applyParam('category', null)}
+                className={`${chipBase} px-4 py-2 text-sm ${
+                  !currentCategory ? chipActive : chipIdle
+                }`}
+              >
+                All
+              </button>
+              {categories.map((cat) => {
+                const active = currentCategory === cat.slug;
+                return (
+                  <button
+                    key={cat.id}
+                    type='button'
+                    onClick={() => toggleCategory(cat.slug)}
+                    className={`${chipBase} inline-flex items-center gap-2 px-4 py-2 text-sm ${
+                      active ? chipActive : chipIdle
+                    }`}
+                  >
+                    <span className='w-4 h-4 inline-block'>
+                      <CategoryIcon slug={cat.slug} className='w-4 h-4' />
+                    </span>
+                    {cat.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Source + Price + Sort — single compact row */}
-          <div className='mt-2 pt-2 border-t border-white/5 flex flex-wrap items-center gap-x-4 gap-y-2'>
+          <div
+            className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${
+              hideCategory ? '' : 'mt-2 pt-2 border-t border-white/5'
+            }`}
+          >
             <div className='flex items-center gap-2'>
               <span className='text-xs uppercase tracking-wider text-gray-500 shrink-0'>
                 Source
@@ -280,9 +304,9 @@ export default function ProductFilterBar({
         </div>
 
         {/* Active filter summary as horizontally scrolling chips */}
-        {(currentCategory || currentPrice || currentSource) && (
+        {((!hideCategory && currentCategory) || currentPrice || currentSource) && (
           <div className='mt-3 flex gap-2 overflow-x-auto'>
-            {currentCategory && (
+            {!hideCategory && currentCategory && (
               <button
                 type='button'
                 onClick={() => applyParam('category', null)}
@@ -378,6 +402,7 @@ export default function ProductFilterBar({
               </div>
             </div>
 
+            {!hideCategory && (
             <section className='mb-6'>
               <h4 className='text-xs uppercase tracking-wider text-gray-500 mb-3'>
                 Category
@@ -416,6 +441,7 @@ export default function ProductFilterBar({
                 })}
               </div>
             </section>
+            )}
 
             <section className='mb-6'>
               <h4 className='text-xs uppercase tracking-wider text-gray-500 mb-3'>
@@ -479,7 +505,7 @@ export default function ProductFilterBar({
                       key={o.value}
                       type='button'
                       onClick={() =>
-                        applyParam('sort', o.value === 'new' ? null : o.value)
+                        applyParam('sort', o.value === defaultSort ? null : o.value)
                       }
                       className={`text-left px-3 py-3 rounded-lg text-sm border transition ${
                         active

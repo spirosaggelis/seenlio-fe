@@ -5,6 +5,15 @@ import ProductCard from '@/components/ProductCard';
 import ProductGrid from '@/components/ProductGrid';
 import ProductFilterBar, { FilterCategory } from '@/components/ProductFilterBar';
 import PaginationNav from '@/components/PaginationNav';
+import {
+  VALID_SOURCES,
+  buildPriceFilter,
+  listingHref,
+  parseSort,
+  parseSource,
+  SORT_MAP,
+  type SourceKey,
+} from '@/lib/listingQuery';
 
 /** Shop CTAs resolve geo on /go/[code]; page HTML can be cached. */
 export const revalidate = 300;
@@ -22,9 +31,6 @@ type ProductsSearch = {
   source?: string;
   q?: string;
 };
-
-type SourceKey = 'amazon' | 'aliexpress' | 'temu';
-const VALID_SOURCES: SourceKey[] = ['amazon', 'aliexpress', 'temu'];
 
 function parsePage(value: string | undefined): number {
   return Math.max(1, parseInt(value ?? '1', 10) || 1);
@@ -111,28 +117,6 @@ interface PaginationMeta {
   total: number;
 }
 
-type SortKey = 'trend' | 'new' | 'price-asc' | 'price-desc' | 'rating';
-
-const SORT_MAP: Record<SortKey, string[]> = {
-  trend: ['trendScore:desc'],
-  new: ['sitePublishedAt:desc', 'createdAt:desc'],
-  'price-asc': ['pricePoints.price:asc'],
-  'price-desc': ['pricePoints.price:desc'],
-  rating: ['rating:desc', 'reviewCount:desc'],
-};
-
-function buildPriceFilter(bucket: string | undefined): Record<string, unknown> | null {
-  if (!bucket) return null;
-  const [loStr, hiStr] = bucket.split('-');
-  const lo = loStr ? parseFloat(loStr) : NaN;
-  const hi = hiStr ? parseFloat(hiStr) : NaN;
-  const range: Record<string, number> = {};
-  if (!isNaN(lo) && lo > 0) range.$gte = lo;
-  if (!isNaN(hi) && hi > 0) range.$lte = hi;
-  if (Object.keys(range).length === 0) return null;
-  return { pricePoints: { price: range } };
-}
-
 export default async function ProductsPage({
   searchParams,
 }: {
@@ -150,14 +134,8 @@ export default async function ProductsPage({
   const categorySlug = sp.category?.trim() || '';
   const priceBucket = sp.price?.trim() || '';
   const query = sp.q?.trim() || '';
-  const sourcePlatform = VALID_SOURCES.includes(sp.source as SourceKey)
-    ? (sp.source as SourceKey)
-    : '';
-  const sortKey: SortKey = (['trend', 'new', 'price-asc', 'price-desc', 'rating'] as const).includes(
-    sp.sort as SortKey,
-  )
-    ? (sp.sort as SortKey)
-    : 'new';
+  const sourcePlatform = parseSource(sp.source);
+  const sortKey = parseSort(sp.sort);
 
   // Build Strapi filter payload
   const filters: Record<string, unknown> = { ...PUBLISHED_PRODUCT_FILTER };
@@ -214,17 +192,15 @@ export default async function ProductsPage({
 
   const { pageCount, total } = pagination;
 
-  const buildHref = (p: number) => {
-    const params = new URLSearchParams();
-    if (query) params.set('q', query);
-    if (categorySlug) params.set('category', categorySlug);
-    if (priceBucket) params.set('price', priceBucket);
-    if (sourcePlatform) params.set('source', sourcePlatform);
-    if (sortKey !== 'new') params.set('sort', sortKey);
-    if (p > 1) params.set('page', String(p));
-    const qs = params.toString();
-    return qs ? `/products?${qs}` : '/products';
-  };
+  const buildHref = (p: number) =>
+    listingHref('/products', {
+      query,
+      category: categorySlug,
+      price: priceBucket,
+      source: sourcePlatform,
+      sort: sortKey,
+      page: p,
+    });
 
   return (
     <div className='bg-[#0a0a0f]'>
