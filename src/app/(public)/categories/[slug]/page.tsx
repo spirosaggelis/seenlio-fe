@@ -9,6 +9,7 @@ import ProductGrid from "@/components/ProductGrid";
 import PaginationNav from "@/components/PaginationNav";
 import CategoryBrowseTracker from "@/components/CategoryBrowseTracker";
 import CategoryIcon from "@/components/CategoryIcon";
+import { pageTitle } from "@/lib/productSeo";
 
 /** Shop CTAs resolve geo on /go/[code]; page HTML can be cached. */
 export const revalidate = 300;
@@ -84,9 +85,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
       : `${siteUrl}/categories/${category.slug}`;
 
   // Layout template already appends " | Seenlio"
-  const rawTitle = category.seo?.metaTitle || category.name;
-  const title =
-    rawTitle.length > 57 ? rawTitle.slice(0, 57).trimEnd() + "…" : rawTitle;
+  const title = pageTitle(category.seo?.metaTitle || category.name);
 
   const rawDesc =
     category.seo?.metaDescription ||

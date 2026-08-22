@@ -9,13 +9,27 @@ export function affiliateGoHref(productCode: string): string {
   return `/go/${encodeURIComponent(productCode)}`;
 }
 
+/** CMS titles sometimes already include the site name; the layout adds it again. */
+export function pageTitle(raw: string, max = 57): string {
+  const cleaned = raw.replace(/\s*[|—–-]\s*Seenlio\s*$/i, '').trim() || raw.trim();
+  if (cleaned.length <= max) return cleaned;
+  return cleaned.slice(0, max).trimEnd() + '…';
+}
+
 /** Seenlio-authored intro so product pages are not only marketplace copy. */
 export function productEditorialIntro(product: {
   name: string;
   sourcePlatform?: string;
   trendScore?: number;
   categories?: Array<{ name?: string }>;
+  seo?: {
+    structuredData?: {
+      editorialIntro?: string;
+    };
+  };
 }): string {
+  const stored = product.seo?.structuredData?.editorialIntro?.trim();
+  if (stored) return stored;
   const platform =
     PLATFORM_LABELS[(product.sourcePlatform || '').toLowerCase()] ||
     'Amazon, Temu, and AliExpress';
