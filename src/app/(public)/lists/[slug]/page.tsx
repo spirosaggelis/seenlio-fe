@@ -76,8 +76,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const listicle = (await getListicleBySlug(slug)) as FullListicle | null;
   if (!listicle) return { title: 'Round-up not found' };
-  const seoTitle =
-    listicle.seo?.metaTitle || `${listicle.title} · Seenlio`;
+  const seoTitle = listicle.seo?.metaTitle || listicle.title || 'Round-up';
   const seoDesc =
     listicle.seo?.metaDescription ||
     (listicle.intro || '').slice(0, 155);

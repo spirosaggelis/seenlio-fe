@@ -156,29 +156,23 @@ export async function GET(request: Request, context: { params: { id: string } | 
           )
           .join('');
 
+        const productVideo = pickProductVideo(normalizeVideos(product.videos));
+        const videoBlock = productVideo
+          ? buildVideoSitemapBlock(
+              productVideo,
+              product.name || product.slug,
+              product.shortDescription ||
+                product.description ||
+                product.name ||
+                'Viral product short on Seenlio',
+            )
+          : '';
+
         urls += `
   <url>
     <loc>${SITE_URL}/products/${product.slug}</loc>${lastmodXml(toLastmod(product.updatedAt))}
-    <priority>0.8</priority>${imageBlocks}
+    <priority>0.8</priority>${imageBlocks}${videoBlock}
   </url>`;
-
-        const productVideo = pickProductVideo(normalizeVideos(product.videos));
-        if (productVideo) {
-          const videoDescription =
-            product.shortDescription ||
-            product.description ||
-            product.name ||
-            'Viral product short on Seenlio';
-          urls += `
-  <url>
-    <loc>${SITE_URL}/products/${product.slug}/watch</loc>${lastmodXml(toLastmod(productVideo.uploadDate))}
-    <priority>0.6</priority>${buildVideoSitemapBlock(
-      productVideo,
-      product.name || product.slug,
-      videoDescription,
-    )}
-  </url>`;
-        }
       }
 
       const pagination = productsData?.meta?.pagination;
