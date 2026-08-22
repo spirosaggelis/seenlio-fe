@@ -7,6 +7,8 @@ import ChannelMatrix from '@/components/ChannelMatrix';
 import LivePulse from '@/components/LivePulse';
 import GtmSnippet from '@/components/GtmSnippet';
 import GtmNoscript from '@/components/GtmNoscript';
+import HeaderSearch from '@/components/HeaderSearch';
+import { getCategories } from '@/lib/strapi';
 
 export const metadata: Metadata = {
   title: {
@@ -40,20 +42,19 @@ export const metadata: Metadata = {
   ),
 };
 
-function NavBar() {
+function NavBar({ categories }: { categories: { name: string; slug: string }[] }) {
   const links = [
     { href: '/', label: 'Home' },
     { href: '/trending', label: 'Trending' },
     { href: '/products', label: 'Products' },
     { href: '/lists', label: 'Round-ups' },
-    { href: '/lookup', label: 'Lookup' },
     { href: '/about', label: 'About' },
   ];
 
   return (
     <header className='fixed top-0 left-0 right-0 z-50 glass-heavy'>
-      <nav className='mx-auto flex max-w-7xl items-center justify-between px-6 py-4'>
-        <Link href='/' className='flex items-center'>
+      <nav className='mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4'>
+        <Link href='/' className='flex items-center shrink-0'>
           <Image
             src='/logo.png'
             alt='Seenlio'
@@ -64,7 +65,7 @@ function NavBar() {
           />
         </Link>
 
-        <div className='hidden md:flex items-center gap-8'>
+        <div className='hidden md:flex items-center gap-6'>
           {links.map((link) => (
             <Link key={link.href} href={link.href} className='nav-link'>
               {link.label}
@@ -72,7 +73,10 @@ function NavBar() {
           ))}
         </div>
 
-        <MobileMenu links={links} />
+        <div className='flex items-center gap-3'>
+          <HeaderSearch />
+          <MobileMenu links={links} categories={categories} />
+        </div>
       </nav>
     </header>
   );
@@ -80,13 +84,13 @@ function NavBar() {
 
 // MobileMenu moved to components/MobileMenu.tsx (client component)
 
-function Footer() {
+function Footer({ categories }: { categories: { name: string; slug: string }[] }) {
   return (
     <footer className='relative'>
       <div className='h-px bg-gradient-to-r from-transparent via-[var(--accent-purple)] to-transparent opacity-40' />
 
       <div className='mx-auto max-w-7xl px-6 py-16'>
-        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12'>
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-12'>
           <div className='lg:col-span-2 max-w-md'>
             <Link href='/' className='flex items-center mb-4'>
               <Image
@@ -112,7 +116,7 @@ function Footer() {
                 { href: '/trending', label: 'Trending' },
                 { href: '/products', label: 'All Products' },
                 { href: '/lists', label: 'Round-ups' },
-                { href: '/lookup', label: 'Product Lookup' },
+                { href: '/lookup', label: 'Product code lookup' },
               ].map((link) => (
                 <li key={link.href}>
                   <Link
@@ -125,6 +129,26 @@ function Footer() {
               ))}
             </ul>
           </div>
+
+          {categories.length > 0 && (
+            <div>
+              <h4 className='text-sm font-semibold text-[var(--fg-primary)] mb-4 uppercase tracking-wider'>
+                Categories
+              </h4>
+              <ul className='space-y-3'>
+                {categories.map((cat) => (
+                  <li key={cat.slug}>
+                    <Link
+                      href={`/categories/${cat.slug}`}
+                      className='text-sm text-[var(--fg-muted)] hover:text-[var(--fg-primary)] transition-colors'
+                    >
+                      {cat.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div>
             <h4 className='text-sm font-semibold text-[var(--fg-primary)] mb-4 uppercase tracking-wider'>
@@ -165,19 +189,32 @@ function Footer() {
   );
 }
 
-export default function PublicLayout({
+export default async function PublicLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  let categories: { name: string; slug: string }[] = [];
+  try {
+    const res = await getCategories({
+      fields: ['name', 'slug', 'sortOrder'],
+      pagination: { pageSize: 20 },
+    });
+    categories = ((res.data || []) as Array<{ name?: string; slug?: string }>)
+      .filter((c) => c.name && c.slug)
+      .map((c) => ({ name: String(c.name), slug: String(c.slug) }));
+  } catch {
+    // Strapi may be down locally
+  }
+
   return (
     <>
       <GtmSnippet />
       <GtmNoscript />
-      <NavBar />
+      <NavBar categories={categories} />
       <div className='h-[72px]' />
       <main className='min-h-[calc(100vh-72px)]'>{children}</main>
-      <Footer />
+      <Footer categories={categories} />
       <ScrollToTop />
     </>
   );

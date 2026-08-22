@@ -21,10 +21,14 @@ import {
 import {
   affiliateGoHref,
   breadcrumbJsonLd,
+  displayName,
+  inferBrand,
+  isMarketplaceBlurb,
   offerValidUntil,
   pageTitle,
   productEditorialIntro,
 } from "@/lib/productSeo";
+import AffiliateDisclosure from "@/components/AffiliateDisclosure";
 
 /** Cached HTML for Googlebot; shop CTAs resolve geo on /go/[code]. */
 export const revalidate = 3600;
@@ -169,14 +173,6 @@ const platformGradients: Record<string, string> = {
   default: "from-purple-500 to-pink-600",
 };
 
-const platformIcons: Record<string, string> = {
-  amazon: "🛒",
-  aliexpress: "📦",
-  ebay: "🏷️",
-  walmart: "🏪",
-  default: "🔗",
-};
-
 export default async function ProductPage({ params }: PageProps) {
   const { slug } = await params;
   const product = (await getProduct(slug)) as ProductData | null;
@@ -200,7 +196,6 @@ export default async function ProductPage({ params }: PageProps) {
     href: string;
     label: string;
     gradient: string;
-    icon: string;
   }> =
     activeLinks.length > 0
       ? activeLinks.map((link) => {
@@ -210,7 +205,6 @@ export default async function ProductPage({ params }: PageProps) {
             href: shopHref,
             label: `Shop on ${PLATFORM_LABELS[platform] ?? link.platform}`,
             gradient: platformGradients[platform] ?? platformGradients.default,
-            icon: platformIcons[platform] ?? platformIcons.default,
           };
         })
       : product.sourceUrl
@@ -222,9 +216,6 @@ export default async function ProductPage({ params }: PageProps) {
               gradient:
                 platformGradients[(product.sourcePlatform ?? "other").toLowerCase()] ??
                 platformGradients.default,
-              icon:
-                platformIcons[(product.sourcePlatform ?? "other").toLowerCase()] ??
-                platformIcons.default,
             },
           ]
         : [];
@@ -258,17 +249,24 @@ export default async function ProductPage({ params }: PageProps) {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com";
   const editorialIntro = productEditorialIntro(product);
+  const shortName = displayName(product.name, product.seo?.metaTitle);
+  const brandName = inferBrand(product.name);
+  const sellerCopy =
+    product.description && !isMarketplaceBlurb(product.description, product.name)
+      ? product.description
+      : product.description && product.description.trim() !== editorialIntro
+        ? product.description
+        : "";
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: product.name,
-    description:
-      `${editorialIntro} ${product.shortDescription || product.description || product.name}`.trim(),
+    name: shortName,
+    description: editorialIntro,
     image: product.media
       ?.filter((m) => m.type !== "video" && m.url)
       .map((m) => proxyImage(m.url)) || [],
     sku: product.productCode,
-    brand: { "@type": "Brand", name: "Seenlio" },
+    ...(brandName ? { brand: { "@type": "Brand", name: brandName } } : {}),
     url: `${siteUrl}/products/${product.slug}`,
     ...(product.rating != null && product.rating > 0
       ? {
@@ -286,7 +284,6 @@ export default async function ProductPage({ params }: PageProps) {
             "@type": "Offer",
             price: currentPrice.price,
             priceCurrency: currentPrice.currency || "USD",
-            availability: "https://schema.org/InStock",
             url: `${siteUrl}/products/${product.slug}`,
             priceValidUntil: offerValidUntil(30),
           },
@@ -298,7 +295,7 @@ export default async function ProductPage({ params }: PageProps) {
     ...(activeCategories[0]
       ? [{ name: activeCategories[0].name, path: `/categories/${activeCategories[0].slug}` }]
       : [{ name: "Products", path: "/products" }]),
-    { name: product.name, path: `/products/${product.slug}` },
+    { name: shortName, path: `/products/${product.slug}` },
   ];
 
   return (
@@ -336,7 +333,7 @@ export default async function ProductPage({ params }: PageProps) {
               </svg>
             </>
           )}
-          <span className="text-gray-300 truncate">{product.name}</span>
+          <span className="text-gray-300 truncate">{shortName}</span>
         </nav>
 
         {/* Main content */}
@@ -344,7 +341,7 @@ export default async function ProductPage({ params }: PageProps) {
           {/* Image gallery */}
           <ProductImageGallery
             media={galleryMedia}
-            productName={product.name}
+            productName={shortName}
           />
 
           {/* Product info */}
@@ -352,7 +349,7 @@ export default async function ProductPage({ params }: PageProps) {
             {/* Product name */}
             <h1 className="text-3xl sm:text-4xl font-extrabold leading-tight">
               <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
-                {product.name}
+                {shortName}
               </span>
             </h1>
 
@@ -411,10 +408,10 @@ export default async function ProductPage({ params }: PageProps) {
                       label={btn.label}
                       productCode={product.productCode}
                       gradient={btn.gradient}
-                      icon={btn.icon}
                     />
                   ))}
                 </div>
+                <AffiliateDisclosure />
               </div>
             )}
           </div>
@@ -450,16 +447,16 @@ export default async function ProductPage({ params }: PageProps) {
                   Why it is trending
                 </h3>
                 <p className="text-gray-300 leading-relaxed mb-4">{editorialIntro}</p>
-                {product.description && (
-                  <>
-                    <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 mb-3">
-                      About This Product
-                    </h3>
-                    <p className="text-gray-300 leading-relaxed whitespace-pre-line">
-                      {product.description}
+                {sellerCopy ? (
+                  <details className="group mt-2">
+                    <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 hover:text-gray-300">
+                      Seller listing details
+                    </summary>
+                    <p className="mt-3 text-sm text-gray-400 leading-relaxed whitespace-pre-line">
+                      {sellerCopy}
                     </p>
-                  </>
-                )}
+                  </details>
+                ) : null}
               </div>
 
               {/* phone frame side */}
@@ -548,7 +545,7 @@ export default async function ProductPage({ params }: PageProps) {
           buttons={ctaButtons}
           productCode={product.productCode}
           price={currentPrice ? { price: currentPrice.price, currency: currentPrice.currency, originalPrice: currentPrice.originalPrice } : undefined}
-          productName={product.name}
+          productName={shortName}
           imageUrl={primaryImage}
         />
       )}

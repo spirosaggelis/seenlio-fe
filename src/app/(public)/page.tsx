@@ -1,10 +1,11 @@
 import { getRollingPageViewCount } from '@/lib/bq/rollingPageViews';
-import { getTrendingProducts, getCategories, getProducts, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
+import { getTrendingProducts, getCategories, getProducts, getPublishedListicles, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
 import { resolveListingProducts } from "@/lib/affiliateListing";
 import HeroSection from "@/components/HeroSection";
 import SectionHeader from "@/components/SectionHeader";
 import ProductCard from "@/components/ProductCard";
 import CategoryCard from "@/components/CategoryCard";
+import ListicleCard, { type ListicleCardData } from "@/components/ListicleCard";
 
 /** Shop CTAs resolve geo on /go/[code]; page HTML can be cached. */
 export const revalidate = 300;
@@ -53,11 +54,12 @@ export default async function HomePage() {
   let trending: Product[] = [];
   let categories: Category[] = [];
   let recent: Product[] = [];
+  let listicles: ListicleCardData[] = [];
   let productCount = 0;
   let pageViews = 0;
 
   try {
-    const [trendingData, categoryData, recentData, productCountData, pageViewCount] = await Promise.all([
+    const [trendingData, categoryData, recentData, productCountData, pageViewCount, listicleData] = await Promise.all([
       getTrendingProducts(),
       getCategories({ pagination: { pageSize: 10 } }),
       getProducts({
@@ -71,6 +73,7 @@ export default async function HomePage() {
         pagination: { pageSize: 1 },
       }),
       getRollingPageViewCount(365),
+      getPublishedListicles({ pagination: { pageSize: 3 } }),
     ]);
     trending = await resolveListingProducts(
       (trendingData || []) as Product[],
@@ -81,6 +84,7 @@ export default async function HomePage() {
     );
     productCount = productCountData.meta?.pagination?.total ?? 0;
     pageViews = pageViewCount;
+    listicles = (listicleData || []) as ListicleCardData[];
   } catch {
     // Strapi / BigQuery may not be configured locally
   }
@@ -102,7 +106,7 @@ export default async function HomePage() {
     url: siteUrl,
     potentialAction: {
       '@type': 'SearchAction',
-      target: `${siteUrl}/lookup?q={search_term_string}`,
+      target: `${siteUrl}/products?q={search_term_string}`,
       'query-input': 'required name=search_term_string',
     },
   };
@@ -199,6 +203,21 @@ export default async function HomePage() {
                     description={cat.description}
                   />
                 </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {listicles.length > 0 && (
+          <section>
+            <SectionHeader
+              title="Editor Round-ups"
+              subtitle="The lists worth reading — not another marketplace dump"
+              viewAllHref="/lists"
+            />
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {listicles.map((list) => (
+                <ListicleCard key={list.slug} list={list} />
               ))}
             </div>
           </section>

@@ -85,19 +85,10 @@ export default function HeroSection({ productCount = 0, pageViews = 0 }: HeroSec
             </span>
           </Link>
           <Link
-            href="/lookup"
+            href="/lists"
             className="group inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold text-white bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
           >
-            <svg
-              className="w-5 h-5 text-purple-400 group-hover:text-purple-300 transition-colors"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-            </svg>
-            Look Up Product
+            Browse Round-ups
           </Link>
         </div>
 

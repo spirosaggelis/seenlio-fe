@@ -1,8 +1,6 @@
 import { Metadata } from 'next';
-import Link from 'next/link';
 import { getPublishedListicles } from '@/lib/strapi';
-import { resolveProductImage } from '@/lib/productImage';
-import ListicleCollage from '@/components/ListicleCollage';
+import ListicleCard, { type ListicleCardData } from '@/components/ListicleCard';
 
 export const metadata: Metadata = {
   title: 'Round-ups & gift guides',
@@ -20,35 +18,11 @@ export const metadata: Metadata = {
 
 export const revalidate = 600;
 
-interface ListicleListItem {
+interface ListicleListItem extends ListicleCardData {
   id?: number;
   documentId?: string;
-  title?: string;
-  slug?: string;
-  angleHook?: string;
-  priceTier?: string;
   searchIntent?: string;
-  products?: Array<{
-    productCode?: string;
-    featuredImage?: { url?: string };
-    media?: Array<{ url?: string; type?: string | null; isPrimary?: boolean | null }>;
-  }>;
   publishedOn?: string;
-}
-
-function priceTierLabel(tier: string | undefined) {
-  switch (tier) {
-    case 'tier_under_10':
-      return 'Under €10';
-    case 'tier_10_30':
-      return '€10–30';
-    case 'tier_30_100':
-      return '€30–100';
-    case 'tier_100_plus':
-      return '€100+';
-    default:
-      return null;
-  }
 }
 
 export default async function ListsIndexPage() {
@@ -84,52 +58,9 @@ export default async function ListsIndexPage() {
           </p>
         ) : (
           <div className='grid gap-5 md:grid-cols-2 lg:grid-cols-3'>
-            {lists.map((l) => {
-              const tier = priceTierLabel(l.priceTier);
-              const cardImages: string[] = [];
-              const seen = new Set<string>();
-              for (const p of l.products || []) {
-                if (cardImages.length >= 4) break;
-                const url = resolveProductImage(p);
-                if (url && !seen.has(url)) {
-                  cardImages.push(url);
-                  seen.add(url);
-                }
-              }
-              return (
-                <Link
-                  key={l.slug}
-                  href={`/lists/${l.slug}`}
-                  className='group flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] transition-all hover:border-purple-500/40 hover:bg-white/[0.04]'
-                >
-                  <ListicleCollage
-                    images={cardImages}
-                    alt={l.title || ''}
-                    variant='card'
-                  />
-                  <div className='flex flex-col p-5'>
-                    <div className='flex items-center gap-2 text-xs text-gray-500'>
-                      {tier && (
-                        <span className='rounded bg-white/5 px-2 py-0.5 text-purple-300'>
-                          {tier}
-                        </span>
-                      )}
-                      {l.products?.length ? (
-                        <span>{l.products.length} picks</span>
-                      ) : null}
-                    </div>
-                    <h2 className='mt-3 text-lg font-semibold text-white group-hover:text-purple-200'>
-                      {l.title}
-                    </h2>
-                    {l.angleHook && (
-                      <p className='mt-2 line-clamp-3 text-sm text-gray-400'>
-                        {l.angleHook}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              );
-            })}
+            {lists.map((l) => (
+              <ListicleCard key={l.slug} list={l} />
+            ))}
           </div>
         )}
       </div>

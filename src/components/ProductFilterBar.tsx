@@ -20,6 +20,7 @@ export interface ProductFilterBarProps {
   currentPrice: string;
   currentSource: string;
   currentSort: SortKey;
+  currentQuery?: string;
 }
 
 const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
@@ -50,6 +51,7 @@ export default function ProductFilterBar({
   currentPrice,
   currentSource,
   currentSort,
+  currentQuery = '',
 }: ProductFilterBarProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -63,6 +65,7 @@ export default function ProductFilterBar({
   const applyParam = useCallback(
     (key: string, value: string | null) => {
       const params = new URLSearchParams();
+      if (currentQuery) params.set('q', currentQuery);
       if (currentCategory) params.set('category', currentCategory);
       if (currentPrice) params.set('price', currentPrice);
       if (currentSource) params.set('source', currentSource);
@@ -78,7 +81,7 @@ export default function ProductFilterBar({
         router.push(qs ? `/products?${qs}` : '/products', { scroll: false });
       });
     },
-    [router, currentCategory, currentPrice, currentSource, currentSort],
+    [router, currentQuery, currentCategory, currentPrice, currentSource, currentSort],
   );
 
   const clearAll = () => {
