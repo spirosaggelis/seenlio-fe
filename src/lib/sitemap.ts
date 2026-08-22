@@ -1,7 +1,7 @@
 const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
 const STRAPI_API_TOKEN = process.env.STRAPI_API_TOKEN;
 
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://viralproducts.com';
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
 export const SITEMAP_REVALIDATE = 3600;
 
 export const SITEMAP_XML_HEADERS = {

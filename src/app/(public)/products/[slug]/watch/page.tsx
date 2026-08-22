@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const video = pickProductVideo(product.videos);
   if (!video) return { title: 'Video Not Found' };
 
-  const title = `${video.title || product.name} | Seenlio`;
+  const title = video.title || product.name;
   const description =
     product.shortDescription ||
     product.description ||
@@ -44,6 +44,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title,
     description,
+    robots: { index: false, follow: true },
     alternates: { canonical: watchUrl },
     openGraph: {
       title,

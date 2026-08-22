@@ -71,13 +71,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com";
   const categoryUrl = `${siteUrl}/categories/${category.slug}`;
 
+  // Layout template already appends " | Seenlio"
   const rawTitle = category.seo?.metaTitle || category.name;
-  const suffix = " | Seenlio";
-  const maxTitleLen = 65 - suffix.length;
   const title =
-    rawTitle.length > maxTitleLen
-      ? rawTitle.slice(0, maxTitleLen).trimEnd() + "…" + suffix
-      : rawTitle + suffix;
+    rawTitle.length > 57 ? rawTitle.slice(0, 57).trimEnd() + "…" : rawTitle;
 
   const rawDesc =
     category.seo?.metaDescription ||

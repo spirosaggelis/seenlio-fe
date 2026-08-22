@@ -118,14 +118,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com";
   const productUrl = `${siteUrl}/products/${product.slug}`;
 
-  // Build SEO-safe title (max ~60 chars before suffix)
+  // Layout template already appends " | Seenlio"
   const rawTitle = product.seo?.metaTitle || product.name;
-  const suffix = " | Seenlio";
-  const maxTitleLen = 65 - suffix.length;
   const title =
-    rawTitle.length > maxTitleLen
-      ? rawTitle.slice(0, maxTitleLen).trimEnd() + "…" + suffix
-      : rawTitle + suffix;
+    rawTitle.length > 57 ? rawTitle.slice(0, 57).trimEnd() + "…" : rawTitle;
 
   // Build SEO-safe description (max 155 chars)
   const rawDesc =
