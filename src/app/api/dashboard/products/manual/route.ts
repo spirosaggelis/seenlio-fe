@@ -92,8 +92,15 @@ function slugify(text: string): string {
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/[\s_]+/g, '-')
     .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 200);
+    .replace(/^-+|-+$/g, '');
+}
+
+function productSlug(name: string, productCode: string): string {
+  const words = slugify(name).split('-').filter(Boolean).slice(0, 6);
+  let stem = words.join('-');
+  if (stem.length > 50) stem = stem.slice(0, 50).replace(/-+$/, '');
+  const code = slugify(productCode);
+  return [stem, code].filter(Boolean).join('-') || 'product';
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -144,7 +151,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const data = {
     name: placeholderName,
-    slug: slugify(`${placeholderName}-${code}`),
+    slug: productSlug(`${parsed.platform} ${parsed.externalId}`, code),
     description: 'Pending scrape — manual import',
     shortDescription: 'Manually added — details pending',
     sourceUrl: parsed.cleanUrl,
