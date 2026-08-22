@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { getCategory, getProducts, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
+import { getCategory, getProducts, getListiclesForCategory, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
 import { resolveListingProducts } from "@/lib/affiliateListing";
 import ProductCard from "@/components/ProductCard";
 import ProductGrid from "@/components/ProductGrid";
@@ -10,6 +10,7 @@ import PaginationNav from "@/components/PaginationNav";
 import CategoryBrowseTracker from "@/components/CategoryBrowseTracker";
 import CategoryIcon from "@/components/CategoryIcon";
 import { pageTitle } from "@/lib/productSeo";
+import HubLinks from "@/components/HubLinks";
 
 /** Shop CTAs resolve geo on /go/[code]; page HTML can be cached. */
 export const revalidate = 300;
@@ -119,7 +120,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 export default async function CategoryPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const page = parsePage((await searchParams).page);
-  const [category, productsRes] = await Promise.all([
+  const [category, productsRes, listicles] = await Promise.all([
     getCategory(slug) as Promise<CategoryData | null>,
     getProducts({
       filters: {
@@ -129,6 +130,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
       sort: ["trendScore:desc"],
       pagination: { page, pageSize: CATEGORY_PAGE_SIZE },
     }),
+    getListiclesForCategory(slug).catch(() => []),
   ]);
   if (!category) notFound();
 
@@ -203,6 +205,20 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
       {/* Products */}
       <div className="mx-auto max-w-7xl px-4 py-12">
+        {page === 1 && listicles.length > 0 && (
+          <div className="mb-12 -mt-4">
+            <HubLinks
+              title="Round-ups in this category"
+              items={(listicles as Array<{ title?: string; slug?: string; angleHook?: string }>)
+                .filter((l) => l.slug && l.title)
+                .map((l) => ({
+                  href: `/lists/${l.slug}`,
+                  label: String(l.title),
+                  hint: l.angleHook,
+                }))}
+            />
+          </div>
+        )}
         <ProductGrid
           isEmpty={products.length === 0}
           emptyMessage={`No products in ${category.name} yet`}

@@ -6,6 +6,7 @@ import SectionHeader from "@/components/SectionHeader";
 import ProductCard from "@/components/ProductCard";
 import CategoryCard from "@/components/CategoryCard";
 import ListicleCard, { type ListicleCardData } from "@/components/ListicleCard";
+import { getSocialProfileUrls, organizationJsonLd } from '@/lib/siteIdentity';
 
 /** Shop CTAs resolve geo on /go/[code]; page HTML can be cached. */
 export const revalidate = 300;
@@ -90,15 +91,7 @@ export default async function HomePage() {
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
-  const orgJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'Seenlio',
-    url: siteUrl,
-    logo: `${siteUrl}/logo.png`,
-    description: 'Discover the most trending consumer products featured in viral videos.',
-    sameAs: [],
-  };
+  const orgJsonLd = organizationJsonLd(await getSocialProfileUrls());
   const websiteJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',

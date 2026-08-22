@@ -1,4 +1,5 @@
 import { getChannels } from '@/lib/strapi';
+import { socialProfileUrl } from '@/lib/siteIdentity';
 
 interface PlatformAccount {
   id: number;
@@ -15,32 +16,6 @@ interface ChannelData {
   isActive?: boolean;
   category?: { id: number; name: string; slug: string } | null;
   platformAccounts?: PlatformAccount[];
-}
-
-function profileUrl(
-  platform: string,
-  accountName: string,
-  accountId?: string,
-): string | null {
-  const handle = accountName.replace(/^@/, '').trim();
-  if (!handle) return null;
-  switch (platform) {
-    case 'youtube':
-      if (accountId && /^UC[A-Za-z0-9_-]+$/.test(accountId)) {
-        return `https://www.youtube.com/channel/${accountId}`;
-      }
-      return `https://www.youtube.com/@${handle}`;
-    case 'tiktok':
-      return `https://www.tiktok.com/@${handle}`;
-    case 'instagram':
-      return `https://www.instagram.com/${handle}`;
-    case 'pinterest':
-      return `https://www.pinterest.com/${handle}`;
-    case 'facebook':
-      return `https://www.facebook.com/${handle}`;
-    default:
-      return null;
-  }
 }
 
 const PLATFORM_META: Record<
@@ -156,7 +131,7 @@ export default async function ChannelMatrix() {
                   {accounts.map((acc) => {
                     const meta = PLATFORM_META[acc.platform];
                     if (!meta) return null;
-                    const url = profileUrl(
+                    const url = socialProfileUrl(
                       acc.platform,
                       acc.accountName,
                       acc.accountId,

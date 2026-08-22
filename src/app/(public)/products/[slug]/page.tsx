@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProduct, getProducts, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
+import { getProduct, getProducts, getListiclesForProduct, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
 import { proxyImage } from "@/lib/imageProxy";
 import { resolveListingProducts } from "@/lib/affiliateListing";
 import TrendBadge from "@/components/TrendBadge";
@@ -29,6 +29,9 @@ import {
   productEditorialIntro,
 } from "@/lib/productSeo";
 import AffiliateDisclosure from "@/components/AffiliateDisclosure";
+import EditorialFaq from "@/components/EditorialFaq";
+import HubLinks from "@/components/HubLinks";
+import { faqJsonLd, productFaqItems } from "@/lib/editorialFaq";
 
 /** Cached HTML for Googlebot; shop CTAs resolve geo on /go/[code]. */
 export const revalidate = 3600;
@@ -228,23 +231,28 @@ export default async function ProductPage({ params }: PageProps) {
   ) ?? [];
 
   let relatedProducts: RelatedProduct[] = [];
-  if (activeCategories[0]) {
-    try {
-      const res = await getProducts({
-        filters: {
-          ...PUBLISHED_PRODUCT_FILTER,
-          categories: { slug: { $eq: activeCategories[0].slug } },
-          slug: { $ne: product.slug },
-        },
-        pagination: { pageSize: 4 },
-        sort: ["trendScore:desc"],
-      });
-      relatedProducts = await resolveListingProducts(
-        (res.data || []) as RelatedProduct[],
-      );
-    } catch {
-      // silently fail
-    }
+  let roundUps: Array<{ title?: string; slug?: string; angleHook?: string }> = [];
+  try {
+    const [relatedRes, listRes] = await Promise.all([
+      activeCategories[0]
+        ? getProducts({
+            filters: {
+              ...PUBLISHED_PRODUCT_FILTER,
+              categories: { slug: { $eq: activeCategories[0].slug } },
+              slug: { $ne: product.slug },
+            },
+            pagination: { pageSize: 4 },
+            sort: ["trendScore:desc"],
+          })
+        : Promise.resolve({ data: [] }),
+      getListiclesForProduct(product.slug),
+    ]);
+    relatedProducts = await resolveListingProducts(
+      (relatedRes.data || []) as RelatedProduct[],
+    );
+    roundUps = listRes as Array<{ title?: string; slug?: string; angleHook?: string }>;
+  } catch {
+    // silently fail
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com";
@@ -290,6 +298,13 @@ export default async function ProductPage({ params }: PageProps) {
         }
       : {}),
   };
+  const faqs = productFaqItems({
+    shortName,
+    editorialIntro,
+    categoryName: activeCategories[0]?.name,
+    sourcePlatform: product.sourcePlatform,
+    productCode: product.productCode,
+  });
   const crumbs = [
     { name: "Home", path: "/" },
     ...(activeCategories[0]
@@ -307,6 +322,10 @@ export default async function ProductPage({ params }: PageProps) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(siteUrl, crumbs)) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(faqs)) }}
       />
       {/* Analytics tracker */}
       <ProductViewTracker productCode={product.productCode} />
@@ -538,6 +557,18 @@ export default async function ProductPage({ params }: PageProps) {
             </div>
           </section>
         )}
+
+        <HubLinks
+          title="Seen in these round-ups"
+          items={roundUps
+            .filter((l) => l.slug && l.title)
+            .map((l) => ({
+              href: `/lists/${l.slug}`,
+              label: String(l.title),
+              hint: l.angleHook,
+            }))}
+        />
+        <EditorialFaq items={faqs} />
       </div>
       {/* Sticky CTA bar — appears when main CTA scrolls out */}
       {ctaButtons.length > 0 && (

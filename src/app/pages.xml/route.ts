@@ -20,6 +20,7 @@ export async function GET() {
     { loc: `${SITE_URL}/products`, priority: '0.9', changefreq: 'daily', lastmod: productsLastmod },
     { loc: `${SITE_URL}/trending`, priority: '0.9', changefreq: 'daily', lastmod: productsLastmod },
     { loc: `${SITE_URL}/lists`, priority: '0.8', changefreq: 'weekly', lastmod: listiclesLastmod },
+    { loc: `${SITE_URL}/about`, priority: '0.7', changefreq: 'monthly', lastmod: siteLastmod },
     { loc: `${SITE_URL}/lookup`, priority: '0.5', changefreq: 'weekly', lastmod: null },
     { loc: `${SITE_URL}/privacy`, priority: '0.3', changefreq: 'yearly', lastmod: null },
     { loc: `${SITE_URL}/terms`, priority: '0.3', changefreq: 'yearly', lastmod: null },
