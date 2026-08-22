@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import { ga4EventDateParams, isBqConfigured, runBqQuery } from '@/lib/bq/client';
 import { pageViewsTotalSql } from '@/lib/bq/siteAnalyticsQueries';
 
@@ -15,8 +16,7 @@ function isoDate(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
-/** Page views in the last `days` (server-side BigQuery — avoids self-fetch / wrong PORT). */
-export async function getRollingPageViewCount(days: number): Promise<number> {
+async function fetchRollingPageViewCount(days: number): Promise<number> {
   if (!isBqConfigured()) return 0;
   const d = Math.min(3650, Math.max(1, days));
   const end = new Date();
@@ -31,4 +31,14 @@ export async function getRollingPageViewCount(days: number): Promise<number> {
     console.error('[bq] getRollingPageViewCount:', err);
     return 0;
   }
+}
+
+/** Cached so About / home stay ISR instead of Cache-Control: private. */
+export async function getRollingPageViewCount(days: number): Promise<number> {
+  const cached = unstable_cache(
+    async () => fetchRollingPageViewCount(days),
+    ['rolling-page-views', String(days)],
+    { revalidate: 3600 },
+  );
+  return cached();
 }

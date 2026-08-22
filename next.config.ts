@@ -44,11 +44,15 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: '/:path((?!api).*)',
+        source: '/:path((?!api|dashboard|go|i).*)',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=300, stale-while-revalidate=86400',
+          },
         ],
       },
     ];

@@ -2,22 +2,28 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getRollingPageViewCount } from '@/lib/bq/rollingPageViews';
 import { getProducts, PUBLISHED_PRODUCT_FILTER } from '@/lib/strapi';
+import EditorialFaq from '@/components/EditorialFaq';
+import { aboutFaqItems, faqJsonLd } from '@/lib/editorialFaq';
+
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: 'About Us',
+  title: 'About Seenlio',
   description:
-    'Meet Seenlio — the engine behind trending product discovery. We surface the products breaking the internet before everyone else.',
+    'Seenlio is an editorial product-discovery site. We match short-form video trends to real retailer listings, write original pages and round-ups, and use affiliate shop links. Last updated 23 August 2026.',
   alternates: { canonical: '/about' },
   openGraph: {
     title: 'About Seenlio',
-    description: 'We surface the products breaking the internet before everyone else.',
+    description:
+      'How Seenlio finds trending products, writes original pages, and uses affiliate links.',
     url: '/about',
     images: [{ url: '/logo.png' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'About Seenlio',
-    description: 'We surface the products breaking the internet before everyone else.',
+    description:
+      'How Seenlio finds trending products, writes original pages, and uses affiliate links.',
     images: ['/logo.png'],
   },
 };
@@ -26,19 +32,19 @@ export const metadata: Metadata = {
 
 const TIMELINE = [
   {
-    icon: '💡',
-    title: 'The spark',
-    text: 'We noticed millions of people scrambling to find the exact product from a viral video — with no easy way to do it.',
+    icon: '1',
+    title: 'The gap',
+    text: 'People see a product in a short video and then spend time hunting the same item across marketplaces. Comment sections are a poor catalog.',
   },
   {
-    icon: '🔍',
-    title: 'The hunt begins',
-    text: 'We built intelligence that watches trending content across platforms and matches it to real, purchasable products.',
+    icon: '2',
+    title: 'The pipeline',
+    text: 'We built a pipeline that watches Amazon, Temu, and AliExpress listings that match those clips, scores them, and writes a Seenlio page instead of copying the seller dump.',
   },
   {
-    icon: '🚀',
-    title: 'Seenlio is born',
-    text: 'A single destination where trend meets shelf. No more doom-scrolling comment sections — just the product, the data, and the link.',
+    icon: '3',
+    title: 'The site',
+    text: 'Public pages, category hubs, and dated round-ups go live on seenlio.com. Shop buttons send you to the retailer. We do not hold stock or run checkout.',
   },
 ];
 
@@ -92,6 +98,7 @@ async function fetchStats() {
 
 export default async function AboutPage() {
   const stats = await fetchStats();
+  const faqs = aboutFaqItems();
 
   const STATS = [
     { value: stats.products > 0 ? formatCount(stats.products) : '0', label: 'Products tracked', color: 'text-purple-400' },
@@ -102,6 +109,10 @@ export default async function AboutPage() {
 
   return (
     <div className='min-h-screen'>
+      <script
+        type='application/ld+json'
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(faqs)) }}
+      />
       {/* ─── Hero ───────────────────────────────────────────────────────── */}
       <section className='relative overflow-hidden py-28 sm:py-40'>
         {/* Background orbs */}
@@ -132,23 +143,22 @@ export default async function AboutPage() {
               <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75' />
               <span className='relative inline-flex rounded-full h-2 w-2 bg-purple-500' />
             </span>
-            Our story
+            Last updated 23 August 2026
           </div>
 
           <h1 className='text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-[1.1] animate-fade-in-up'>
-            <span className='text-white'>We Find What&apos;s</span>
-            <br />
+            <span className='text-white'>What</span>{' '}
             <span className='bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent animate-gradient-shift bg-[length:200%_auto]'>
-              Breaking The Internet
-            </span>
-            <br />
-            <span className='text-white'>So You Don&apos;t Have To</span>
+              Seenlio
+            </span>{' '}
+            <span className='text-white'>is</span>
           </h1>
 
           <p className='mt-8 text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed animate-fade-in-up [animation-delay:200ms]'>
-            Seenlio is the engine behind trending product discovery. We watch
-            what goes viral, identify the exact products, and bring them to you
-            — with real data, fair prices, and zero guesswork.
+            Seenlio is an editorial product-discovery site. We match products
+            that show up in short videos to real retailer listings, write our
+            own titles and intros, and group the better ones into dated
+            round-ups. Shop links are affiliate. We are not a marketplace.
           </p>
         </div>
       </section>
@@ -180,10 +190,10 @@ export default async function AboutPage() {
           <div className='text-center mb-16'>
             <h2 className='text-3xl sm:text-4xl font-bold text-white mb-4'>
               How it{' '}
-              <span className='gradient-text-warm'>started</span>
+              <span className='gradient-text-warm'>works</span>
             </h2>
             <p className='text-gray-400 max-w-xl mx-auto'>
-              Every great product starts with a simple frustration.
+              Three steps from a viral clip to a public page.
             </p>
           </div>
 
@@ -291,7 +301,7 @@ export default async function AboutPage() {
                 step: '01',
                 title: 'Detect',
                 description:
-                  'Our pipeline monitors trending content across TikTok, Instagram, YouTube, and X — identifying products that are gaining explosive traction.',
+                  'Discovery jobs pull trending and bestselling listings from Amazon, Temu, and AliExpress and score them against short-video signals.',
                 icon: (
                   <svg className='w-6 h-6' fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor'>
                     <path strokeLinecap='round' strokeLinejoin='round' d='M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z' />
@@ -300,9 +310,9 @@ export default async function AboutPage() {
               },
               {
                 step: '02',
-                title: 'Verify',
+                title: 'Write',
                 description:
-                  'Each product is matched to real listings, cross-referenced across retailers, and enriched with pricing, ratings, and availability data.',
+                  'Published pages get a Seenlio title, meta description, and intro. Marketplace seller copy stays available but is not the page you are meant to read first.',
                 icon: (
                   <svg className='w-6 h-6' fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor'>
                     <path strokeLinecap='round' strokeLinejoin='round' d='M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z' />
@@ -311,9 +321,9 @@ export default async function AboutPage() {
               },
               {
                 step: '03',
-                title: 'Deliver',
+                title: 'Publish',
                 description:
-                  'Products go live on Seenlio with trend scores, multi-platform price comparisons, and direct links — ready for you to discover.',
+                  'Products, categories, and round-ups go live on seenlio.com. Shop buttons use /go/[code] so we can measure clicks. Retailers handle payment and shipping.',
                 icon: (
                   <svg className='w-6 h-6' fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor'>
                     <path strokeLinecap='round' strokeLinejoin='round' d='M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z' />
@@ -375,6 +385,8 @@ export default async function AboutPage() {
             </p>
           </div>
         </section>
+
+        <EditorialFaq items={faqs} title='Common questions' />
 
         {/* ─── CTA ──────────────────────────────────────────────────────── */}
         <section className='relative text-center py-16'>

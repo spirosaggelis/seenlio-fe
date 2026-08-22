@@ -10,6 +10,31 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         disallow: ['/dashboard/', '/api/', '/go/'],
       },
+      {
+        userAgent: 'GPTBot',
+        allow: '/',
+        disallow: ['/dashboard/', '/api/', '/go/'],
+      },
+      {
+        userAgent: 'ChatGPT-User',
+        allow: '/',
+        disallow: ['/dashboard/', '/api/', '/go/'],
+      },
+      {
+        userAgent: 'PerplexityBot',
+        allow: '/',
+        disallow: ['/dashboard/', '/api/', '/go/'],
+      },
+      {
+        userAgent: 'ClaudeBot',
+        allow: '/',
+        disallow: ['/dashboard/', '/api/', '/go/'],
+      },
+      {
+        userAgent: 'Google-Extended',
+        allow: '/',
+        disallow: ['/dashboard/', '/api/', '/go/'],
+      },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,
   };

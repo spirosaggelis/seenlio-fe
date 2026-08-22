@@ -285,6 +285,7 @@ export async function getListicleBySlug(slug: string) {
           categories: { fields: ['name', 'slug', 'isActive'] },
         },
       },
+      categories: { fields: ['name', 'slug'] },
     },
   });
   return (res.data?.[0] as Record<string, unknown> | undefined) || null;
@@ -310,6 +311,32 @@ export async function getRelatedListicles(
     sort: ['priorityScore:desc'],
     pagination: { pageSize: limit },
     fields: ['title', 'slug', 'angleHook', 'priceTier'],
+  });
+  return Array.isArray(res.data) ? (res.data as Record<string, unknown>[]) : [];
+}
+
+export async function getListiclesForProduct(productSlug: string, limit = 4) {
+  const res = await fetchStrapi<unknown[]>('/listicles', {
+    filters: {
+      ...PUBLISHED_LISTICLE_FILTER,
+      products: { slug: { $eq: productSlug } },
+    },
+    sort: ['publishedOn:desc', 'priorityScore:desc'],
+    pagination: { pageSize: limit },
+    fields: ['title', 'slug', 'angleHook', 'publishedOn'],
+  });
+  return Array.isArray(res.data) ? (res.data as Record<string, unknown>[]) : [];
+}
+
+export async function getListiclesForCategory(categorySlug: string, limit = 4) {
+  const res = await fetchStrapi<unknown[]>('/listicles', {
+    filters: {
+      ...PUBLISHED_LISTICLE_FILTER,
+      categories: { slug: { $eq: categorySlug } },
+    },
+    sort: ['publishedOn:desc', 'priorityScore:desc'],
+    pagination: { pageSize: limit },
+    fields: ['title', 'slug', 'angleHook', 'publishedOn'],
   });
   return Array.isArray(res.data) ? (res.data as Record<string, unknown>[]) : [];
 }

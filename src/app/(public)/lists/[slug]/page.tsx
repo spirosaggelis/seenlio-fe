@@ -12,6 +12,9 @@ import { resolveProductImage } from '@/lib/productImage';
 import PlatformBadge from '@/components/PlatformBadge';
 import ListicleCollage from '@/components/ListicleCollage';
 import { pageTitle } from '@/lib/productSeo';
+import EditorialFaq from '@/components/EditorialFaq';
+import HubLinks from '@/components/HubLinks';
+import { faqJsonLd, listicleFaqItems } from '@/lib/editorialFaq';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
 
@@ -58,6 +61,7 @@ interface FullListicle {
   items?: ListicleItem[];
   products?: ListicleProduct[];
   featuredImage?: { url?: string };
+  categories?: Array<{ name?: string; slug?: string }>;
   seo?: {
     metaTitle?: string;
     metaDescription?: string;
@@ -256,9 +260,24 @@ export default async function ListiclePage({ params }: PageProps) {
     ],
   };
 
+  const updatedLabel = publishedIso
+    ? new Date(publishedIso).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : undefined;
+  const faqs = listicleFaqItems({
+    title: listicle.title || 'this round-up',
+    intro: listicle.intro,
+    howWePicked: listicle.howWePicked,
+    updatedLabel,
+  });
+  const categoryHubs = (listicle.categories || []).filter((c) => c.slug && c.name);
+
   const ldGraph = {
     '@context': 'https://schema.org',
-    '@graph': [ldArticle, ldItemList, ldBreadcrumb],
+    '@graph': [ldArticle, ldItemList, ldBreadcrumb, faqJsonLd(faqs)],
   };
 
   return (
@@ -419,6 +438,16 @@ export default async function ListiclePage({ params }: PageProps) {
             </p>
           </section>
         )}
+
+        <HubLinks
+          title='Browse the category'
+          items={categoryHubs.map((c) => ({
+            href: `/categories/${c.slug}`,
+            label: String(c.name),
+            hint: 'More products in this category',
+          }))}
+        />
+        <EditorialFaq items={faqs} />
 
         {related.length > 0 && (
           <section className='mt-16 border-t border-white/10 pt-10'>
