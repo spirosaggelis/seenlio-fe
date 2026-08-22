@@ -22,6 +22,7 @@ import {
   affiliateGoHref,
   breadcrumbJsonLd,
   offerValidUntil,
+  pageTitle,
   productEditorialIntro,
 } from "@/lib/productSeo";
 
@@ -77,6 +78,9 @@ interface ProductData {
   seo?: {
     metaTitle?: string;
     metaDescription?: string;
+    structuredData?: {
+      editorialIntro?: string;
+    };
   };
 }
 
@@ -119,9 +123,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const productUrl = `${siteUrl}/products/${product.slug}`;
 
   // Layout template already appends " | Seenlio"
-  const rawTitle = product.seo?.metaTitle || product.name;
-  const title =
-    rawTitle.length > 57 ? rawTitle.slice(0, 57).trimEnd() + "…" : rawTitle;
+  const title = pageTitle(product.seo?.metaTitle || product.name);
 
   // Build SEO-safe description (max 155 chars)
   const rawDesc =

@@ -11,6 +11,7 @@ import { proxyImage } from '@/lib/imageProxy';
 import { resolveProductImage } from '@/lib/productImage';
 import PlatformBadge from '@/components/PlatformBadge';
 import ListicleCollage from '@/components/ListicleCollage';
+import { pageTitle } from '@/lib/productSeo';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
 
@@ -76,7 +77,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const listicle = (await getListicleBySlug(slug)) as FullListicle | null;
   if (!listicle) return { title: 'Round-up not found' };
-  const seoTitle = listicle.seo?.metaTitle || listicle.title || 'Round-up';
+  const seoTitle = pageTitle(listicle.seo?.metaTitle || listicle.title || 'Round-up');
   const seoDesc =
     listicle.seo?.metaDescription ||
     (listicle.intro || '').slice(0, 155);
