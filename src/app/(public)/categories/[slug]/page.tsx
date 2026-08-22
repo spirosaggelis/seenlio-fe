@@ -6,11 +6,19 @@ import { getCategory, getProducts, getListiclesForCategory, PUBLISHED_PRODUCT_FI
 import { resolveListingProducts } from "@/lib/affiliateListing";
 import ProductCard from "@/components/ProductCard";
 import ProductGrid from "@/components/ProductGrid";
+import ProductFilterBar from "@/components/ProductFilterBar";
 import PaginationNav from "@/components/PaginationNav";
 import CategoryBrowseTracker from "@/components/CategoryBrowseTracker";
 import CategoryIcon from "@/components/CategoryIcon";
 import { pageTitle } from "@/lib/productSeo";
 import HubLinks from "@/components/HubLinks";
+import {
+  buildPriceFilter,
+  listingHref,
+  parseSort,
+  parseSource,
+  SORT_MAP,
+} from "@/lib/listingQuery";
 
 /** Shop CTAs resolve geo on /go/[code]; page HTML can be cached. */
 export const revalidate = 300;
@@ -55,10 +63,19 @@ interface CategoryData {
 
 const CATEGORY_PAGE_SIZE = 48;
 
+type CategorySearch = {
+  page?: string;
+  price?: string;
+  sort?: string;
+  source?: string;
+};
+
 type PageProps = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<CategorySearch>;
 };
+
+const DEFAULT_SORT = "new" as const;
 
 function parsePage(value: string | undefined): number {
   return Math.max(1, parseInt(value ?? "1", 10) || 1);
@@ -75,15 +92,23 @@ const accentMap: Record<string, { from: string; to: string; border: string; glow
 
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const page = parsePage((await searchParams).page);
+  const sp = await searchParams;
+  const page = parsePage(sp.page);
   const category = (await getCategory(slug)) as CategoryData | null;
   if (!category) return { title: "Category Not Found" };
 
+  const hasFilters = Boolean(
+    sp.price?.trim() ||
+      parseSource(sp.source) ||
+      (sp.sort && parseSort(sp.sort, DEFAULT_SORT) !== DEFAULT_SORT),
+  );
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com";
   const categoryUrl =
-    page > 1
-      ? `${siteUrl}/categories/${category.slug}?page=${page}`
-      : `${siteUrl}/categories/${category.slug}`;
+    hasFilters
+      ? `${siteUrl}/categories/${category.slug}`
+      : page > 1
+        ? `${siteUrl}/categories/${category.slug}?page=${page}`
+        : `${siteUrl}/categories/${category.slug}`;
 
   // Layout template already appends " | Seenlio"
   const title = pageTitle(category.seo?.metaTitle || category.name);
@@ -119,15 +144,26 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 
 export default async function CategoryPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const page = parsePage((await searchParams).page);
+  const sp = await searchParams;
+  const page = parsePage(sp.page);
+  const priceBucket = sp.price?.trim() || "";
+  const sourcePlatform = parseSource(sp.source);
+  const sortKey = parseSort(sp.sort, DEFAULT_SORT);
+  const filters: Record<string, unknown> = {
+    ...PUBLISHED_PRODUCT_FILTER,
+    categories: { slug: { $eq: slug } },
+  };
+  if (sourcePlatform) {
+    filters.sourcePlatform = { $eq: sourcePlatform };
+  }
+  const priceFilter = buildPriceFilter(priceBucket);
+  if (priceFilter) Object.assign(filters, priceFilter);
+
   const [category, productsRes, listicles] = await Promise.all([
     getCategory(slug) as Promise<CategoryData | null>,
     getProducts({
-      filters: {
-        ...PUBLISHED_PRODUCT_FILTER,
-        categories: { slug: { $eq: slug } },
-      },
-      sort: ["trendScore:desc"],
+      filters,
+      sort: SORT_MAP[sortKey],
       pagination: { page, pageSize: CATEGORY_PAGE_SIZE },
     }),
     getListiclesForCategory(slug).catch(() => []),
@@ -142,6 +178,16 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
   const pageCount = pagination?.pageCount ?? 1;
   const total = pagination?.total ?? products.length;
   const accent = accentMap[category.color || "purple"] || accentMap.purple;
+  const hasFilters = Boolean(priceBucket || sourcePlatform);
+  const basePath = `/categories/${slug}`;
+  const buildHref = (p: number) =>
+    listingHref(basePath, {
+      price: priceBucket,
+      source: sourcePlatform,
+      sort: sortKey,
+      defaultSort: DEFAULT_SORT,
+      page: p,
+    });
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
@@ -205,8 +251,19 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
       {/* Products */}
       <div className="mx-auto max-w-7xl px-4 py-12">
+        <ProductFilterBar
+          categories={[]}
+          totalResults={total}
+          currentCategory={slug}
+          currentPrice={priceBucket}
+          currentSource={sourcePlatform}
+          currentSort={sortKey}
+          basePath={basePath}
+          hideCategory
+          defaultSort={DEFAULT_SORT}
+        />
         {page === 1 && listicles.length > 0 && (
-          <div className="mb-12 -mt-4">
+          <div className="mb-12">
             <HubLinks
               title="Round-ups in this category"
               items={(listicles as Array<{ title?: string; slug?: string; angleHook?: string }>)
@@ -221,7 +278,11 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
         )}
         <ProductGrid
           isEmpty={products.length === 0}
-          emptyMessage={`No products in ${category.name} yet`}
+          emptyMessage={
+            hasFilters
+              ? "No products match these filters. Try clearing one."
+              : `No products in ${category.name} yet`
+          }
         >
           {products.map((product, i) => {
             const primaryImage =
@@ -254,13 +315,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
             );
           })}
         </ProductGrid>
-        <PaginationNav
-          page={page}
-          pageCount={pageCount}
-          hrefFor={(p) =>
-            p > 1 ? `/categories/${slug}?page=${p}` : `/categories/${slug}`
-          }
-        />
+        <PaginationNav page={page} pageCount={pageCount} hrefFor={buildHref} />
       </div>
     </div>
   );
