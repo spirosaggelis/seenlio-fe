@@ -6,6 +6,7 @@ import { getCategory, getProducts, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi
 import { resolveListingProducts } from "@/lib/affiliateListing";
 import ProductCard from "@/components/ProductCard";
 import ProductGrid from "@/components/ProductGrid";
+import PaginationNav from "@/components/PaginationNav";
 import CategoryBrowseTracker from "@/components/CategoryBrowseTracker";
 import CategoryIcon from "@/components/CategoryIcon";
 
@@ -50,9 +51,16 @@ interface CategoryData {
   };
 }
 
+const CATEGORY_PAGE_SIZE = 48;
+
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ page?: string }>;
 };
+
+function parsePage(value: string | undefined): number {
+  return Math.max(1, parseInt(value ?? "1", 10) || 1);
+}
 
 const accentMap: Record<string, { from: string; to: string; border: string; glow: string }> = {
   purple: { from: "from-purple-500", to: "to-purple-700", border: "border-purple-500/30", glow: "shadow-purple-500/20" },
@@ -63,13 +71,17 @@ const accentMap: Record<string, { from: string; to: string; border: string; glow
   red: { from: "from-red-500", to: "to-red-700", border: "border-red-500/30", glow: "shadow-red-500/20" },
 };
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+  const page = parsePage((await searchParams).page);
   const category = (await getCategory(slug)) as CategoryData | null;
   if (!category) return { title: "Category Not Found" };
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com";
-  const categoryUrl = `${siteUrl}/categories/${category.slug}`;
+  const categoryUrl =
+    page > 1
+      ? `${siteUrl}/categories/${category.slug}?page=${page}`
+      : `${siteUrl}/categories/${category.slug}`;
 
   const rawTitle = category.seo?.metaTitle || category.name;
   const suffix = " | Seenlio";
@@ -108,8 +120,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function CategoryPage({ params }: PageProps) {
+export default async function CategoryPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const page = parsePage((await searchParams).page);
   const [category, productsRes] = await Promise.all([
     getCategory(slug) as Promise<CategoryData | null>,
     getProducts({
@@ -118,7 +131,7 @@ export default async function CategoryPage({ params }: PageProps) {
         categories: { slug: { $eq: slug } },
       },
       sort: ["trendScore:desc"],
-      pagination: { pageSize: 48 },
+      pagination: { page, pageSize: CATEGORY_PAGE_SIZE },
     }),
   ]);
   if (!category) notFound();
@@ -126,6 +139,10 @@ export default async function CategoryPage({ params }: PageProps) {
   const products = await resolveListingProducts(
     (productsRes.data || []) as Product[],
   );
+  const pagination = (productsRes as { meta?: { pagination?: { pageCount?: number; total?: number } } })
+    .meta?.pagination;
+  const pageCount = pagination?.pageCount ?? 1;
+  const total = pagination?.total ?? products.length;
   const accent = accentMap[category.color || "purple"] || accentMap.purple;
 
   return (
@@ -181,7 +198,7 @@ export default async function CategoryPage({ params }: PageProps) {
           {/* Product count */}
           <div className="mt-6 flex items-center gap-3">
             <span className="text-sm text-gray-500">
-              {products.length} {products.length === 1 ? "product" : "products"} found
+              {total} {total === 1 ? "product" : "products"} found
             </span>
             <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
           </div>
@@ -225,6 +242,13 @@ export default async function CategoryPage({ params }: PageProps) {
             );
           })}
         </ProductGrid>
+        <PaginationNav
+          page={page}
+          pageCount={pageCount}
+          hrefFor={(p) =>
+            p > 1 ? `/categories/${slug}?page=${p}` : `/categories/${slug}`
+          }
+        />
       </div>
     </div>
   );
