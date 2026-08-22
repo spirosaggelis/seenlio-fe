@@ -6,6 +6,7 @@ import StarRating from './StarRating';
 import ListingCtaButton from './ListingCtaButton';
 import PlatformBadge from './PlatformBadge';
 import { proxyImage } from '@/lib/imageProxy';
+import { displayName, isMarketplaceBlurb } from '@/lib/productSeo';
 
 interface PricePoint {
   price: number;
@@ -27,6 +28,7 @@ interface ProductCardProps {
   sourcePlatform?: string;
   affiliateHref: string;
   shortDescription?: string;
+  seoTitle?: string;
   imageUrl?: string;
   pricePoints?: PricePoint[];
   categories?: Category[];
@@ -42,6 +44,7 @@ export default function ProductCard({
   sourcePlatform,
   affiliateHref,
   shortDescription,
+  seoTitle,
   imageUrl,
   pricePoints,
   categories,
@@ -50,18 +53,23 @@ export default function ProductCard({
   trendScore,
 }: ProductCardProps) {
   const price = pricePoints?.[0];
+  const title = displayName(name, seoTitle);
+  const blurb =
+    shortDescription && !isMarketplaceBlurb(shortDescription, name)
+      ? shortDescription
+      : undefined;
 
   return (
     <div className='group relative flex flex-col rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:border-purple-500/40 hover:shadow-[0_0_30px_-5px_rgba(139,92,246,0.3)]'>
       {/* Stretched link covers entire card — z-[1], CTA button sits at z-[2] above it */}
-      <Link href={`/products/${slug}`} className='absolute inset-0 z-1' aria-label={name} />
+      <Link href={`/products/${slug}`} className='absolute inset-0 z-1' aria-label={title} />
 
       {/* Image */}
       <div className='overflow-hidden bg-linear-to-br from-purple-900/20 via-gray-900 to-cyan-900/20' style={{ paddingBottom: '75%', position: 'relative' }}>
         {imageUrl ? (
           <Image
             src={proxyImage(imageUrl)}
-            alt={name}
+            alt={title}
             fill
             sizes='(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw'
             className='object-cover transition-transform duration-500 group-hover:scale-105'
@@ -99,13 +107,12 @@ export default function ProductCard({
       <div className='flex flex-col flex-1 p-4 gap-2'>
         {/* Name */}
         <h3 className='font-bold text-white line-clamp-2 leading-snug group-hover:text-purple-200 transition-colors'>
-          {name}
+          {title}
         </h3>
 
-        {/* Description */}
-        {shortDescription && (
+        {blurb && (
           <p className='text-sm text-gray-400 line-clamp-2 leading-relaxed'>
-            {shortDescription}
+            {blurb}
           </p>
         )}
 

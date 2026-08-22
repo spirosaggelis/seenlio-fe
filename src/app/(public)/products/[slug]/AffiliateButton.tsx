@@ -8,7 +8,7 @@ interface AffiliateButtonProps {
   label: string;
   productCode: string;
   gradient: string;
-  icon: string;
+  icon?: string;
   clickSource?: string;
 }
 
@@ -33,7 +33,7 @@ export default function AffiliateButton({
     >
       <div className={`absolute inset-0 bg-gradient-to-r ${gradient}`} />
       <div className={`absolute inset-0 bg-gradient-to-r ${gradient} blur-xl opacity-30 group-hover:opacity-50 transition-opacity`} />
-      <span className="relative text-lg">{icon}</span>
+      {icon ? <span className="relative text-lg">{icon}</span> : null}
       <span className="relative">{label}</span>
       <svg
         className="relative w-5 h-5 transition-transform group-hover:translate-x-1"

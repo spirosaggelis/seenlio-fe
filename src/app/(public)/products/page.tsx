@@ -20,6 +20,7 @@ type ProductsSearch = {
   price?: string;
   sort?: string;
   source?: string;
+  q?: string;
 };
 
 type SourceKey = 'amazon' | 'aliexpress' | 'temu';
@@ -36,9 +37,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const sp = await searchParams;
   const page = parsePage(sp.page);
+  const query = sp.q?.trim() || '';
   const hasFilters = Boolean(
     sp.category?.trim() ||
       sp.price?.trim() ||
+      query ||
       (sp.source && VALID_SOURCES.includes(sp.source as SourceKey)) ||
       (sp.sort && sp.sort !== 'new'),
   );
@@ -47,7 +50,11 @@ export async function generateMetadata({
     : page > 1
       ? `/products?page=${page}`
       : '/products';
-  const title = !hasFilters && page > 1 ? `All Products — Page ${page}` : 'All Products';
+  const title = query
+    ? `Search: ${query}`
+    : !hasFilters && page > 1
+      ? `All Products — Page ${page}`
+      : 'All Products';
 
   return {
     title,
@@ -135,12 +142,14 @@ export default async function ProductsPage({
     price?: string;
     sort?: string;
     source?: string;
+    q?: string;
   }>;
 }) {
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
   const categorySlug = sp.category?.trim() || '';
   const priceBucket = sp.price?.trim() || '';
+  const query = sp.q?.trim() || '';
   const sourcePlatform = VALID_SOURCES.includes(sp.source as SourceKey)
     ? (sp.source as SourceKey)
     : '';
@@ -160,6 +169,16 @@ export default async function ProductsPage({
   }
   const priceFilter = buildPriceFilter(priceBucket);
   if (priceFilter) Object.assign(filters, priceFilter);
+  if (query) {
+    if (/^VP[A-Z0-9]{3,}$/i.test(query)) {
+      filters.productCode = { $containsi: query };
+    } else {
+      filters.$or = [
+        { name: { $containsi: query } },
+        { productCode: { $containsi: query } },
+      ];
+    }
+  }
 
   let products: Product[] = [];
   let pagination: PaginationMeta = { page, pageSize: PAGE_SIZE, pageCount: 1, total: 0 };
@@ -197,6 +216,7 @@ export default async function ProductsPage({
 
   const buildHref = (p: number) => {
     const params = new URLSearchParams();
+    if (query) params.set('q', query);
     if (categorySlug) params.set('category', categorySlug);
     if (priceBucket) params.set('price', priceBucket);
     if (sourcePlatform) params.set('source', sourcePlatform);
@@ -214,7 +234,7 @@ export default async function ProductsPage({
           <div className='flex items-baseline flex-wrap gap-x-4 gap-y-2'>
             <h1 className='text-4xl sm:text-5xl font-extrabold tracking-tight'>
               <span className='bg-linear-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent'>
-                All Products
+                {query ? `Results for “${query}”` : 'All Products'}
               </span>
             </h1>
             {total > 0 && (
@@ -234,13 +254,14 @@ export default async function ProductsPage({
           currentPrice={priceBucket}
           currentSource={sourcePlatform}
           currentSort={sortKey}
+          currentQuery={query}
         />
 
         {/* Products */}
         <ProductGrid
           isEmpty={products.length === 0}
           emptyMessage={
-            categorySlug || priceBucket || sourcePlatform
+            categorySlug || priceBucket || sourcePlatform || query
               ? 'No products match these filters. Try clearing one.'
               : 'No products available yet'
           }
