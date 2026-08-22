@@ -114,6 +114,24 @@ export const PUBLISHED_PRODUCT_FILTER = {
   productStatus: { $eq: 'published' },
 } as const;
 
+/** How far back a product still counts as "trending now". Trend scores do not decay. */
+export const TRENDING_WINDOW_DAYS = 30;
+
+export function trendingSinceISO(days = TRENDING_WINDOW_DAYS): string {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+/** Published products discovered (or created) inside the trending window. */
+export function trendingRecencyFilter(days = TRENDING_WINDOW_DAYS) {
+  const since = trendingSinceISO(days);
+  return {
+    $or: [
+      { discoveredAt: { $gte: since } },
+      { createdAt: { $gte: since } },
+    ],
+  };
+}
+
 /** Strip inactive categories from a list of products */
 function stripInactiveCategories<T>(products: T[]): T[] {
   return products.map((p) => {
@@ -204,17 +222,30 @@ export async function lookupProduct(code: string) {
 }
 
 export async function getTrendingProducts() {
-  const res = await fetchStrapi<unknown[]>('/products', {
-    filters: { ...PUBLISHED_PRODUCT_FILTER },
+  const populate = ['categories', 'media', 'pricePoints', 'featuredImage', 'affiliateLinks'];
+  const recent = await fetchStrapi<unknown[]>('/products', {
+    filters: {
+      ...PUBLISHED_PRODUCT_FILTER,
+      ...trendingRecencyFilter(),
+    },
     sort: ['trendScore:desc'],
     pagination: { pageSize: 24 },
-    populate: ['categories', 'media', 'pricePoints', 'featuredImage', 'affiliateLinks'],
+    populate,
   });
 
-  if (Array.isArray(res.data)) {
-    return stripInactiveCategories(res.data);
+  let data = Array.isArray(recent.data) ? recent.data : [];
+  // Keep the section filled if discovery has been quiet.
+  if (data.length < 8) {
+    const fallback = await fetchStrapi<unknown[]>('/products', {
+      filters: { ...PUBLISHED_PRODUCT_FILTER },
+      sort: ['trendScore:desc'],
+      pagination: { pageSize: 24 },
+      populate,
+    });
+    data = Array.isArray(fallback.data) ? fallback.data : [];
   }
-  return [];
+
+  return stripInactiveCategories(data);
 }
 
 export async function getSettings() {

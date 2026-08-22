@@ -37,7 +37,7 @@ Seenlio is not a store. We do not hold stock. Checkout happens on the retailer.
 - [About](${SITE_URL}/about): what Seenlio is, how products are chosen, affiliate disclosure
 - [Round-ups](${SITE_URL}/lists): dated editorial lists (best pages to cite)
 - [Products](${SITE_URL}/products): individual product write-ups
-- [Trending](${SITE_URL}/trending): highest trend-score products right now
+- [Trending](${SITE_URL}/trending): highest trend-score products from the last 30 days
 
 ## Categories
 

@@ -10,18 +10,18 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "Trending Products",
   description:
-    "See the hottest trending products going viral right now, ranked by trend score.",
+    "See the highest-scoring products Seenlio spotted in the last 30 days, ranked by trend score.",
   alternates: { canonical: "/trending" },
   openGraph: {
     title: "Trending Products",
-    description: "See the hottest trending products going viral right now, ranked by trend score.",
+    description: "See the highest-scoring products Seenlio spotted in the last 30 days, ranked by trend score.",
     url: "/trending",
     images: [{ url: "/logo.png" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Trending Products",
-    description: "See the hottest trending products going viral right now, ranked by trend score.",
+    description: "See the highest-scoring products Seenlio spotted in the last 30 days, ranked by trend score.",
     images: ["/logo.png"],
   },
 };
@@ -95,8 +95,8 @@ export default async function TrendingPage() {
             </span>
           </h1>
           <p className="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">
-            Products ranked by their viral trend score — a combination of social
-            mentions, search volume, and community engagement.
+            Highest trend scores among products discovered in the last 30 days —
+            a mix of social mentions, search volume, and community engagement.
           </p>
         </div>
 

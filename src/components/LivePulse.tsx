@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getProducts, PUBLISHED_PRODUCT_FILTER } from '@/lib/strapi';
+import { getProducts, PUBLISHED_PRODUCT_FILTER, trendingRecencyFilter } from '@/lib/strapi';
 
 interface PulseProduct {
   id: number;
@@ -13,7 +13,7 @@ export default async function LivePulse() {
   let products: PulseProduct[] = [];
   try {
     const res = await getProducts({
-      filters: { ...PUBLISHED_PRODUCT_FILTER },
+      filters: { ...PUBLISHED_PRODUCT_FILTER, ...trendingRecencyFilter() },
       sort: ['trendScore:desc'],
       pagination: { pageSize: 14 },
       fields: ['id', 'name', 'slug', 'trendScore'],

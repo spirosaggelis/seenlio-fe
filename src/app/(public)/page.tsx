@@ -122,7 +122,7 @@ export default async function HomePage() {
         <section>
           <SectionHeader
             title="Trending Now"
-            subtitle="The hottest products going viral right now"
+            subtitle="Highest-scoring finds from the last 30 days"
             viewAllHref="/trending"
           />
           {trending.length > 0 ? (
