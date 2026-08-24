@@ -5,6 +5,7 @@ export const SITE_URL =
 
 /** Fallback if Strapi is down — public profile URLs only, no secrets. */
 const FALLBACK_SOCIAL_URLS = [
+  'https://www.youtube.com/@seenlio',
   'https://www.youtube.com/@seenlio.kitchen',
   'https://www.youtube.com/@seenlio.gadgets',
   'https://www.youtube.com/@seenlioclean',
