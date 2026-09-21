@@ -98,7 +98,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           ...(API_TOKEN ? { Authorization: `Bearer ${API_TOKEN}` } : {}),
         },
         body: JSON.stringify({
-          data: { credentials },
+          data: {
+            credentials,
+            // Google "Testing" refresh tokens last ~7 days. Production apps
+            // last until revoked; the nightly refresh job extends this window.
+            tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          },
         }),
       });
     }
