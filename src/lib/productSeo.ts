@@ -102,6 +102,25 @@ export function breadcrumbJsonLd(
   };
 }
 
+/** One line for the buy box and for agents: why this product is worth a look. */
+export function solvesLine(product: {
+  name: string;
+  shortDescription?: string;
+  categories?: Array<{ name?: string }>;
+  seo?: { structuredData?: { editorialIntro?: string } };
+}): string {
+  const stored = product.seo?.structuredData?.editorialIntro?.trim();
+  const firstSentence = stored?.split(/(?<=[.!?])\s/)[0]?.trim();
+  if (firstSentence && firstSentence.length <= 140) return firstSentence;
+
+  const short = product.shortDescription?.replace(/\s+/g, ' ').trim();
+  if (short && !isMarketplaceBlurb(short, product.name) && short.length <= 140) return short;
+
+  const category = product.categories?.find((item) => item.name)?.name;
+  if (category) return `Solves an everyday ${category.toLowerCase()} problem.`;
+  return 'Solves the problem people keep sharing this for.';
+}
+
 export function offerValidUntil(days = 30): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() + days);

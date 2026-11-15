@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { headers } from 'next/headers';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
@@ -15,6 +16,9 @@ import { pageTitle } from '@/lib/productSeo';
 import EditorialFaq from '@/components/EditorialFaq';
 import HubLinks from '@/components/HubLinks';
 import { faqJsonLd, listicleFaqItems } from '@/lib/editorialFaq';
+import RegionalPrice from '@/components/RegionalPrice';
+import { isHiddenTemuProduct } from '@/lib/temuAffiliate';
+import { getVisitorCountry } from '@/lib/affiliateDestination';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
 
@@ -40,7 +44,8 @@ interface ListicleProduct {
   slug?: string;
   sourcePlatform?: string;
   shortDescription?: string;
-  pricePoints?: Array<{ price: number; currency?: string }>;
+  pricePoints?: Array<{ price: number; currency?: string; originalPrice?: number }>;
+  affiliateLinks?: Array<{ url?: string; isActive?: boolean }>;
   featuredImage?: { url?: string; formats?: Record<string, { url?: string }> };
   media?: Array<{ url?: string; type?: string | null; isPrimary?: boolean | null }>;
 }
@@ -147,6 +152,7 @@ function priceTierLabel(tier: string | undefined) {
 
 export default async function ListiclePage({ params }: PageProps) {
   const { slug } = await params;
+  const country = getVisitorCountry(await headers(), null);
   const listicle = (await getListicleBySlug(slug)) as FullListicle | null;
   if (!listicle) notFound();
 
@@ -166,7 +172,9 @@ export default async function ListiclePage({ params }: PageProps) {
     if (it.productCode) itemByCode[it.productCode] = it;
   }
 
-  const orderedProducts = [...(listicle.products || [])].sort((a, b) => {
+  const orderedProducts = [...(listicle.products || [])]
+    .filter((product) => !isHiddenTemuProduct(product))
+    .sort((a, b) => {
     const ai = itemByCode[a.productCode || '']?.position ?? 999;
     const bi = itemByCode[b.productCode || '']?.position ?? 999;
     return ai - bi;
@@ -227,6 +235,22 @@ export default async function ListiclePage({ params }: PageProps) {
         position: it.position ?? idx + 1,
         name: it.headline || it.productName || product?.name,
         url: product?.slug ? `${SITE_URL}/products/${product.slug}` : undefined,
+        item: product
+          ? {
+              '@type': 'Product',
+              name: product.name,
+              description: (it.commentary || product.shortDescription || '').slice(0, 240),
+              url: product.slug ? `${SITE_URL}/products/${product.slug}` : undefined,
+              offers: priceOf(product) != null
+                ? {
+                    '@type': 'Offer',
+                    price: priceOf(product)!.toFixed(2),
+                    priceCurrency: product.pricePoints?.[0]?.currency || 'USD',
+                    url: product.slug ? `${SITE_URL}/products/${product.slug}` : undefined,
+                  }
+                : undefined,
+            }
+          : undefined,
       };
     }),
   };
@@ -398,14 +422,20 @@ export default async function ListiclePage({ params }: PageProps) {
                       {product.sourcePlatform && (
                         <PlatformBadge platform={product.sourcePlatform} />
                       )}
-                      {price !== undefined && (
-                        <span className='text-gray-400'>
-                          ≈ €{price.toFixed(2)}
-                        </span>
+                      {price !== undefined ? (
+                        <RegionalPrice
+                          price={price}
+                          currency={product.pricePoints?.[0]?.currency}
+                          country={country}
+                          size='sm'
+                        />
+                      ) : (
+                        <span className='text-sm text-gray-400'>See price</span>
                       )}
                     </div>
                     {item.commentary && (
                       <p className='text-base leading-relaxed text-gray-300'>
+                        <span className='font-medium text-white'>Why it&apos;s good. </span>
                         {item.commentary}
                       </p>
                     )}

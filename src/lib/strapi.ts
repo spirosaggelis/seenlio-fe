@@ -1,3 +1,5 @@
+import { isHiddenTemuProduct, visibleCatalogFilters } from './temuAffiliate';
+
 const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
 const STRAPI_API_TOKEN = process.env.STRAPI_API_TOKEN;
 
@@ -172,6 +174,10 @@ export async function getProducts(options: FetchOptions = {}) {
   const res = await fetchStrapi<unknown[]>('/products', {
     populate: ['categories', 'media', 'pricePoints', 'featuredImage', 'affiliateLinks'],
     ...options,
+    filters: visibleCatalogFilters({
+      ...PUBLISHED_PRODUCT_FILTER,
+      ...(options.filters || {}),
+    }),
   });
 
   if (Array.isArray(res.data)) {
@@ -183,7 +189,7 @@ export async function getProducts(options: FetchOptions = {}) {
 
 export async function getProduct(slug: string) {
   const res = await fetchStrapi<unknown[]>('/products', {
-    filters: { slug: { $eq: slug }, ...PUBLISHED_PRODUCT_FILTER },
+    filters: visibleCatalogFilters({ slug: { $eq: slug }, ...PUBLISHED_PRODUCT_FILTER }),
     populate: {
       categories: true,
       affiliateLinks: true,
@@ -198,7 +204,9 @@ export async function getProduct(slug: string) {
   });
 
   const product = res.data?.[0] as Record<string, unknown> | undefined;
-  if (!product) return null;
+  if (!product || isHiddenTemuProduct(product as { sourcePlatform?: string; affiliateLinks?: { url?: string; isActive?: boolean }[] })) {
+    return null;
+  }
 
   // Strip inactive categories at the data layer
   if (Array.isArray(product.categories)) {
@@ -224,10 +232,10 @@ export async function lookupProduct(code: string) {
 export async function getTrendingProducts() {
   const populate = ['categories', 'media', 'pricePoints', 'featuredImage', 'affiliateLinks'];
   const recent = await fetchStrapi<unknown[]>('/products', {
-    filters: {
+    filters: visibleCatalogFilters({
       ...PUBLISHED_PRODUCT_FILTER,
       ...trendingRecencyFilter(),
-    },
+    }),
     sort: ['trendScore:desc'],
     pagination: { pageSize: 24 },
     populate,
@@ -237,7 +245,7 @@ export async function getTrendingProducts() {
   // Keep the section filled if discovery has been quiet.
   if (data.length < 8) {
     const fallback = await fetchStrapi<unknown[]>('/products', {
-      filters: { ...PUBLISHED_PRODUCT_FILTER },
+      filters: visibleCatalogFilters({ ...PUBLISHED_PRODUCT_FILTER }),
       sort: ['trendScore:desc'],
       pagination: { pageSize: 24 },
       populate,
@@ -313,6 +321,7 @@ export async function getListicleBySlug(slug: string) {
           featuredImage: true,
           media: true,
           pricePoints: true,
+          affiliateLinks: true,
           categories: { fields: ['name', 'slug', 'isActive'] },
         },
       },

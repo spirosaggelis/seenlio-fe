@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import TrendBadge from './TrendBadge';
-import PriceDisplay from './PriceDisplay';
+import RegionalPrice from './RegionalPrice';
 import StarRating from './StarRating';
 import ListingCtaButton from './ListingCtaButton';
 import PlatformBadge from './PlatformBadge';
@@ -138,10 +138,10 @@ export default function ProductCard({
         {/* Price + product code on same row */}
         <div className='flex items-center justify-between gap-2'>
           {price ? (
-            <PriceDisplay
+            <RegionalPrice
               price={price.price}
               originalPrice={price.originalPrice}
-              currency={price.currency === 'USD' ? '$' : price.currency || '$'}
+              currency={price.currency}
               size='sm'
             />
           ) : <div />}

@@ -1,7 +1,5 @@
 'use client';
 
-import { trackAffiliateClick } from '@/lib/analytics';
-
 interface AffiliateButtonProps {
   href: string;
   platform: string;
@@ -19,14 +17,12 @@ export default function AffiliateButton({
   productCode,
   gradient,
   icon,
-  clickSource = 'product_detail',
 }: AffiliateButtonProps) {
   return (
     <a
       href={href}
       target="_blank"
       rel="nofollow sponsored noopener"
-      onClick={() => trackAffiliateClick(productCode, platform, href, clickSource)}
       data-product-code={productCode}
       data-platform={platform}
       className="group relative flex items-center justify-center gap-3 w-full rounded-xl px-6 py-4 font-semibold text-white overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg"
@@ -34,7 +30,7 @@ export default function AffiliateButton({
       <div className={`absolute inset-0 bg-gradient-to-r ${gradient}`} />
       <div className={`absolute inset-0 bg-gradient-to-r ${gradient} blur-xl opacity-30 group-hover:opacity-50 transition-opacity`} />
       {icon ? <span className="relative text-lg">{icon}</span> : null}
-      <span className="relative">{label}</span>
+      <span className="relative text-lg">{label}</span>
       <svg
         className="relative w-5 h-5 transition-transform group-hover:translate-x-1"
         fill="none"

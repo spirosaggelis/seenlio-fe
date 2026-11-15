@@ -1,89 +1,67 @@
 import type { AffiliatePattern } from './affiliateTypes';
+import { applyOutboundTracking, type OutboundTraffic } from './outboundTracking';
 
-/** Temu only counts clicks on official affiliate links — not bare PDP URLs + _x_cid. */
-export function isOfficialTemuAffiliateUrl(url: string): boolean {
+export interface TemuLinkInput {
+  url?: string;
+  isActive?: boolean;
+}
+
+export interface TemuProductInput {
+  sourcePlatform?: string;
+  affiliateLinks?: TemuLinkInput[];
+}
+
+/** A click only counts when the link is a temu.to short link. */
+export function isTemuToUrl(url: string): boolean {
   try {
-    const u = new URL(url);
-    if (u.hostname === 'temu.to') return true;
-    if (u.searchParams.has('adg_ctx') || u.searchParams.has('_p_adg_gwid')) {
-      return true;
-    }
+    const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+    return host === 'temu.to' || host.endsWith('.temu.to');
   } catch {
     return false;
   }
-  return false;
 }
 
-export function extractTemuGoodsId(url: string): string | null {
-  try {
-    const u = new URL(url);
-    const fromQuery = u.searchParams.get('goods_id');
-    if (fromQuery) return fromQuery;
-    const m = u.pathname.match(/-g-(\d{10,})/);
-    return m ? m[1] : null;
-  } catch {
-    const m = url.match(/goods_id[=_](\d+)/);
-    return m ? m[1] : null;
-  }
+export function hasTemuToLink(product: TemuProductInput): boolean {
+  return (product.affiliateLinks || []).some(
+    (link) => link.isActive !== false && !!link.url && isTemuToUrl(link.url),
+  );
 }
 
-/** Product detail page URL (opens PDP, not the goods-un feed grid). */
-export function buildTemuProductDetailUrl(
-  goodsId: string,
-  productCode: string,
-): string {
-  const url = new URL('https://www.temu.com/kuiper/uk1.html');
-  url.searchParams.set('subj', 'goods-detail');
-  url.searchParams.set('_bg_fs', '1');
-  url.searchParams.set('goods_id', goodsId);
-  url.searchParams.set('utm_source', 'seenlio');
-  url.searchParams.set('utm_medium', 'temu');
-  url.searchParams.set('utm_campaign', productCode);
-  return url.toString();
+/** Temu listings without a temu.to link stay off the site until the account is tracking again. */
+export function isHiddenTemuProduct(product: TemuProductInput): boolean {
+  return (product.sourcePlatform || '').toLowerCase() === 'temu' && !hasTemuToLink(product);
 }
 
-function appendSeenlioUtm(url: URL, productCode: string): string {
-  url.searchParams.set('utm_source', 'seenlio');
-  url.searchParams.set('utm_medium', 'temu');
-  url.searchParams.set('utm_campaign', productCode);
-  return url.toString();
+/** Strapi filter: published products that are not untracked Temu listings. */
+export function visibleCatalogFilters(
+  filters?: Record<string, unknown>,
+): Record<string, unknown> {
+  const visible = {
+    $or: [
+      { sourcePlatform: { $null: true } },
+      { sourcePlatform: { $ne: 'temu' } },
+      { affiliateLinks: { url: { $contains: 'temu.to' } } },
+    ],
+  };
+  if (!filters || Object.keys(filters).length === 0) return visible;
+  return { $and: [filters, visible] };
 }
 
 /**
- * Resolve the Temu outbound URL for /go/{code}.
- * Official temu.to links are used unchanged (affiliate tracking).
- * Fallback PDP links get UTM only — _x_cid on bare URLs does not track in Temu.
+ * Only official temu.to links go out. Bare temu.com product pages are not affiliate clicks.
  */
 export function resolveTemuDestinationUrl(
   rawUrl: string,
   _pattern: AffiliatePattern | undefined,
   productCode: string,
+  traffic?: OutboundTraffic,
 ): string {
-  if (!rawUrl) return 'https://seenlio.com/products';
-
-  if (isOfficialTemuAffiliateUrl(rawUrl)) {
-    return rawUrl;
-  }
-
-  if (
-    rawUrl.includes('subj=goods-detail') ||
-    /-g-\d{10,}/.test(rawUrl)
-  ) {
-    try {
-      return appendSeenlioUtm(new URL(rawUrl), productCode);
-    } catch {
-      return rawUrl;
-    }
-  }
-
-  const goodsId = extractTemuGoodsId(rawUrl);
-  if (goodsId) {
-    return buildTemuProductDetailUrl(goodsId, productCode);
-  }
-
+  if (!rawUrl || !isTemuToUrl(rawUrl)) return '';
   try {
-    return appendSeenlioUtm(new URL(rawUrl), productCode);
+    const url = new URL(rawUrl);
+    applyOutboundTracking(url, { platform: 'temu', productCode, traffic });
+    return url.toString();
   } catch {
-    return rawUrl;
+    return '';
   }
 }

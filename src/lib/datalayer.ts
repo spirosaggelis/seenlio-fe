@@ -1,4 +1,5 @@
 import type { ConsentPreferences } from './consent';
+import { isUntrackedAgent } from './requestAgents';
 import { isAnalyticsDisabled } from '@/utils/analyticsDisable';
 
 // ─── Consent state mapping ───────────────────────────────────────────────────
@@ -30,6 +31,15 @@ export type DataLayerEvent =
   | { event: 'product_view'; product_code: string; page_path: string }
   | { event: 'affiliate_click'; product_code: string; platform: string; url: string; click_source: string }
   | { event: 'generate_lead'; product_code: string; platform: string; url: string; click_source: string }
+  | {
+      event: 'go_view' | 'affiliate_redirect';
+      product_code: string;
+      store: string;
+      country: string;
+      tag: string;
+      source: string;
+      channel: string;
+    }
   | { event: 'search'; query: string; results_count: number }
   | { event: 'category_browse'; category_slug: string }
   | {
@@ -50,6 +60,7 @@ declare global {
 export function pushToDataLayer(event: DataLayerEvent): void {
   if (typeof window === 'undefined') return;
   if (isAnalyticsDisabled()) return;
+  if (isUntrackedAgent(window.navigator.userAgent)) return;
   if (window.location.pathname.startsWith('/dashboard')) return;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push(event as unknown as Record<string, unknown>);

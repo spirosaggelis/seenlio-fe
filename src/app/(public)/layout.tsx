@@ -9,6 +9,7 @@ import GtmSnippet from '@/components/GtmSnippet';
 import GtmNoscript from '@/components/GtmNoscript';
 import HeaderSearch from '@/components/HeaderSearch';
 import { getCategories } from '@/lib/strapi';
+import { VisitorCountryProvider } from '@/components/VisitorCountry';
 
 export const metadata: Metadata = {
   title: {
@@ -208,7 +209,7 @@ export default async function PublicLayout({
   }
 
   return (
-    <>
+    <VisitorCountryProvider>
       <GtmSnippet />
       <GtmNoscript />
       <NavBar categories={categories} />
@@ -216,6 +217,6 @@ export default async function PublicLayout({
       <main className='min-h-[calc(100vh-72px)]'>{children}</main>
       <Footer categories={categories} />
       <ScrollToTop />
-    </>
+    </VisitorCountryProvider>
   );
 }

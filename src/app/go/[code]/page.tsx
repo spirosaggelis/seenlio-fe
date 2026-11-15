@@ -2,12 +2,16 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import GoRedirectClient from './GoRedirectClient';
+import GtmSnippet from '@/components/GtmSnippet';
+import { CURRENCY_SYMBOL, currencyForCountry } from '@/lib/amazonRouting';
 import type { AffiliatePattern } from '@/lib/affiliateTypes';
 import {
-  buildAffiliateDestinationUrl,
   getVisitorCountry,
+  resolveAffiliateDestination,
   type AffiliateProductInput,
 } from '@/lib/affiliateDestination';
+import { parseOutboundTraffic } from '@/lib/outboundTracking';
+import { isInAppBrowser, isUntrackedAgent, shouldSkipSplash } from '@/lib/requestAgents';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -110,16 +114,20 @@ export default async function GoPage({
   }
 
   const country = getVisitorCountry(reqHeaders, sp['country']);
+  const traffic = parseOutboundTraffic({ s: sp.s, ch: sp.ch });
+  const userAgent = reqHeaders.get('user-agent');
+
+  const destination = await resolveAffiliateDestination(product, patterns, country, {
+    traffic,
+  });
 
   console.log(
-    `[go] product=${product.productCode} platform=${product.sourcePlatform} country=${country} patterns=${patterns.length}`,
+    `[go] product=${product.productCode} platform=${product.sourcePlatform} country=${country} store=${destination.store} source=${traffic.source || '-'}`,
   );
-  const destinationUrl = await buildAffiliateDestinationUrl(
-    product,
-    patterns,
-    country,
-  );
-  console.log(`[go] destinationUrl=${destinationUrl}`);
+
+  if (destination.url && (isUntrackedAgent(userAgent) || (shouldSkipSplash(userAgent) && !isInAppBrowser(userAgent)))) {
+    redirect(destination.url);
+  }
 
   const primaryImage =
     product.media?.find((m) => m.isPrimary && m.type !== 'video')?.url ||
@@ -127,18 +135,33 @@ export default async function GoPage({
     null;
 
   const price = product.pricePoints?.[0] || null;
+  const storedCurrency = (price?.currency || 'USD').toUpperCase();
+  const showAmount = price?.price != null && storedCurrency === currencyForCountry(country);
+  const priceText = showAmount
+    ? `${CURRENCY_SYMBOL[storedCurrency] || ''}${price!.price.toFixed(2)}`
+    : null;
 
   return (
-    <GoRedirectClient
-      destinationUrl={destinationUrl}
-      productCode={product.productCode}
-      platform={product.sourcePlatform || 'other'}
-      productName={product.name}
-      productImage={primaryImage}
-      price={price?.price ?? null}
-      originalPrice={price?.originalPrice ?? null}
-      currency={price?.currency ?? null}
-      country={country}
-    />
+    <>
+      <GtmSnippet />
+      <GoRedirectClient
+        destinationUrl={destination.url}
+        productCode={product.productCode}
+        platform={product.sourcePlatform || 'other'}
+        productName={product.name}
+        productImage={primaryImage}
+        priceText={priceText}
+        seePrice={price?.price != null && !showAmount}
+        instant={isInAppBrowser(userAgent)}
+        tracking={{
+          product_code: product.productCode,
+          store: destination.store,
+          country,
+          tag: destination.tag,
+          source: traffic.source,
+          channel: traffic.channel,
+        }}
+      />
+    </>
   );
 }

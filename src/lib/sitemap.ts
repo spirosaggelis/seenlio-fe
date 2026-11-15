@@ -73,6 +73,9 @@ export async function fetchLatestField(
 export async function fetchProductsMaxUpdatedAt(): Promise<string | null> {
   return fetchLatestField('products', 'updatedAt', {
     'filters[productStatus][$eq]': 'published',
+    'filters[$or][0][sourcePlatform][$null]': 'true',
+    'filters[$or][1][sourcePlatform][$ne]': 'temu',
+    'filters[$or][2][affiliateLinks][url][$contains]': 'temu.to',
   });
 }
 
@@ -120,6 +123,9 @@ export async function fetchProductMonthBuckets(): Promise<ProductMonthBucket[]> 
       'pagination[pageSize]': '100',
       'pagination[page]': String(page),
       'filters[productStatus][$eq]': 'published',
+      'filters[$or][0][sourcePlatform][$null]': 'true',
+      'filters[$or][1][sourcePlatform][$ne]': 'temu',
+      'filters[$or][2][affiliateLinks][url][$contains]': 'temu.to',
     });
     const data = await strapiFetch('/products', params);
 

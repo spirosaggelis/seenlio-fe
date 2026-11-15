@@ -1,11 +1,13 @@
 import { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProduct, getProducts, getListiclesForProduct, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
 import { proxyImage } from "@/lib/imageProxy";
+import { getVisitorCountry } from "@/lib/affiliateDestination";
 import { resolveListingProducts } from "@/lib/affiliateListing";
 import TrendBadge from "@/components/TrendBadge";
-import PriceDisplay from "@/components/PriceDisplay";
+import RegionalPrice from "@/components/RegionalPrice";
 import StarRating from "@/components/StarRating";
 import ProductCard from "@/components/ProductCard";
 import PlatformBadge from "@/components/PlatformBadge";
@@ -27,13 +29,14 @@ import {
   offerValidUntil,
   pageTitle,
   productEditorialIntro,
+  solvesLine,
 } from "@/lib/productSeo";
 import AffiliateDisclosure from "@/components/AffiliateDisclosure";
 import EditorialFaq from "@/components/EditorialFaq";
 import HubLinks from "@/components/HubLinks";
 import { faqJsonLd, productFaqItems } from "@/lib/editorialFaq";
 
-/** Cached HTML for Googlebot; shop CTAs resolve geo on /go/[code]. */
+/** Shop links still resolve on /go. The page itself reads the visitor country for the price. */
 export const revalidate = 3600;
 
 interface AffiliateLink {
@@ -178,6 +181,7 @@ const platformGradients: Record<string, string> = {
 
 export default async function ProductPage({ params }: PageProps) {
   const { slug } = await params;
+  const country = getVisitorCountry(await headers(), null);
   const product = (await getProduct(slug)) as ProductData | null;
   if (!product) notFound();
 
@@ -257,6 +261,7 @@ export default async function ProductPage({ params }: PageProps) {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com";
   const editorialIntro = productEditorialIntro(product);
+  const solves = solvesLine(product);
   const shortName = displayName(product.name, product.seo?.metaTitle);
   const brandName = inferBrand(product.name);
   const sellerCopy =
@@ -269,7 +274,7 @@ export default async function ProductPage({ params }: PageProps) {
     "@context": "https://schema.org",
     "@type": "Product",
     name: shortName,
-    description: editorialIntro,
+    description: solves,
     image: product.media
       ?.filter((m) => m.type !== "video" && m.url)
       .map((m) => proxyImage(m.url)) || [],
@@ -357,22 +362,16 @@ export default async function ProductPage({ params }: PageProps) {
 
         {/* Main content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
-          {/* Image gallery */}
-          <ProductImageGallery
-            media={galleryMedia}
-            productName={shortName}
-          />
-
-          {/* Product info */}
-          <div className="space-y-5">
-            {/* Product name */}
+          {/* Buy box first on phones so the button is on the first screen. */}
+          <div className="order-1 space-y-5 lg:order-2">
             <h1 className="text-3xl sm:text-4xl font-extrabold leading-tight">
               <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
                 {shortName}
               </span>
             </h1>
 
-            {/* Rating + Price row */}
+            <p className="text-base leading-relaxed text-gray-300">{solves}</p>
+
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               {product.rating != null && product.rating > 0 && (
                 <StarRating
@@ -380,15 +379,31 @@ export default async function ProductPage({ params }: PageProps) {
                   reviewCount={product.reviewCount}
                 />
               )}
-              {currentPrice && (
-                <PriceDisplay
+              {currentPrice ? (
+                <RegionalPrice
                   price={currentPrice.price}
                   originalPrice={currentPrice.originalPrice}
-                  currency="$"
+                  currency={currentPrice.currency}
+                  country={country}
                   size="lg"
                 />
+              ) : (
+                <span className="text-lg font-semibold text-gray-300">See price</span>
               )}
             </div>
+
+            {ctaButtons[0] && (
+              <div className="space-y-3 pt-1" id="cta-sentinel">
+                <AffiliateButton
+                  href={ctaButtons[0].href}
+                  platform={ctaButtons[0].platform}
+                  label={ctaButtons[0].label}
+                  productCode={product.productCode}
+                  gradient={ctaButtons[0].gradient}
+                />
+                <AffiliateDisclosure />
+              </div>
+            )}
 
             {/* Badges row */}
             <div className="flex flex-wrap items-center gap-2">
@@ -414,25 +429,13 @@ export default async function ProductPage({ params }: PageProps) {
                 </Link>
               ))}
             </div>
+          </div>
 
-            {/* CTA — in viewport, before description */}
-            {ctaButtons.length > 0 && (
-              <div className="space-y-3 pt-1" id="cta-sentinel">
-                <div className="grid gap-3">
-                  {ctaButtons.map((btn, i) => (
-                    <AffiliateButton
-                      key={i}
-                      href={btn.href}
-                      platform={btn.platform}
-                      label={btn.label}
-                      productCode={product.productCode}
-                      gradient={btn.gradient}
-                    />
-                  ))}
-                </div>
-                <AffiliateDisclosure />
-              </div>
-            )}
+          <div className="order-2 lg:order-1">
+            <ProductImageGallery
+              media={galleryMedia}
+              productName={shortName}
+            />
           </div>
         </div>
 
@@ -573,8 +576,9 @@ export default async function ProductPage({ params }: PageProps) {
       {/* Sticky CTA bar — appears when main CTA scrolls out */}
       {ctaButtons.length > 0 && (
         <StickyCtaBar
-          buttons={ctaButtons}
+          buttons={ctaButtons.slice(0, 1)}
           productCode={product.productCode}
+          country={country}
           price={currentPrice ? { price: currentPrice.price, currency: currentPrice.currency, originalPrice: currentPrice.originalPrice } : undefined}
           productName={shortName}
           imageUrl={primaryImage}

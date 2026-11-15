@@ -5,6 +5,7 @@ import {
   type AffiliateProductInput,
 } from '@/lib/affiliateDestination';
 import type { AffiliatePattern } from '@/lib/affiliateTypes';
+import { parseOutboundTraffic } from '@/lib/outboundTracking';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +76,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'not found' }, { status: 404 });
   }
 
-  const url = await buildAffiliateDestinationUrl(product, patterns, country);
+  const url = await buildAffiliateDestinationUrl(product, patterns, country, {
+    traffic: parseOutboundTraffic({
+      s: request.nextUrl.searchParams.get('s'),
+      ch: request.nextUrl.searchParams.get('ch'),
+    }),
+  });
   return NextResponse.json({ url });
 }
