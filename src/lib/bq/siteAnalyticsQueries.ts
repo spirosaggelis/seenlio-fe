@@ -98,7 +98,7 @@ SELECT
   COALESCE(ds.unique_sessions, 0) AS unique_sessions,
   COUNT(DISTINCT b.user_pseudo_id) AS unique_users,
   SUM(CASE WHEN b.event_name = 'view_item' THEN 1 ELSE 0 END) AS product_views,
-  SUM(CASE WHEN b.event_name = 'affiliate_click' THEN 1 ELSE 0 END) AS affiliate_clicks
+  SUM(CASE WHEN b.event_name IN ('affiliate_click', 'affiliate_redirect') THEN 1 ELSE 0 END) AS affiliate_clicks
 FROM base b
 LEFT JOIN daily_sessions ds ON ds.event_date = b.event_date
 GROUP BY b.event_date, ds.unique_sessions
@@ -236,7 +236,7 @@ SELECT
   COUNT(*) AS value
 FROM ${table()}
 WHERE event_date BETWEEN @start_date AND @end_date
-  AND event_name = 'affiliate_click'
+  AND event_name IN ('affiliate_click', 'affiliate_redirect')
 GROUP BY name
 ORDER BY value DESC
 LIMIT 15
@@ -250,7 +250,7 @@ SELECT
   COUNT(*) AS value
 FROM ${table()}
 WHERE event_date BETWEEN @start_date AND @end_date
-  AND event_name = 'affiliate_click'
+  AND event_name IN ('affiliate_click', 'affiliate_redirect')
 GROUP BY name
 ORDER BY value DESC
 LIMIT 15
@@ -264,7 +264,7 @@ SELECT
   COUNT(*) AS value
 FROM ${table()}
 WHERE event_date BETWEEN @start_date AND @end_date
-  AND event_name = 'affiliate_click'
+  AND event_name IN ('affiliate_click', 'affiliate_redirect')
   AND ${ITEM_CODE} != ''
 GROUP BY item_code
 ORDER BY value DESC
@@ -279,7 +279,7 @@ SELECT
   COUNT(*) AS value
 FROM ${table()}
 WHERE event_date BETWEEN @start_date AND @end_date
-  AND event_name = 'affiliate_click'
+  AND event_name IN ('affiliate_click', 'affiliate_redirect')
 GROUP BY event_date
 ORDER BY event_date
 `.trim();
@@ -308,7 +308,7 @@ SELECT
   ANY_VALUE(${PARAM_PLATFORM}) AS affiliate_platform
 FROM ${table()}
 WHERE event_date BETWEEN @start_date AND @end_date
-  AND event_name = 'affiliate_click'
+  AND event_name IN ('affiliate_click', 'affiliate_redirect')
   AND ${ITEM_CODE} != ''
 GROUP BY item_code
 ORDER BY clicks DESC

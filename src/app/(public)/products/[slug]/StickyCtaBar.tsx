@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { trackAffiliateClick } from '@/lib/analytics';
+import RegionalPrice from '@/components/RegionalPrice';
 
 interface StickyCtaBarProps {
   buttons: Array<{
@@ -13,12 +13,13 @@ interface StickyCtaBarProps {
     icon?: string;
   }>;
   productCode: string;
+  country?: string;
   price?: { price: number; currency: string; originalPrice?: number };
   productName: string;
   imageUrl?: string;
 }
 
-export default function StickyCtaBar({ buttons, productCode, price, productName, imageUrl }: StickyCtaBarProps) {
+export default function StickyCtaBar({ buttons, productCode, country, price, productName, imageUrl }: StickyCtaBarProps) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -57,17 +58,13 @@ export default function StickyCtaBar({ buttons, productCode, price, productName,
             <div className="min-w-0">
               <p className="text-sm font-semibold text-white truncate">{productName}</p>
               {price && (
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-emerald-400">
-                    {price.currency === 'USD' ? '$' : price.currency}
-                    {price.price.toFixed(2)}
-                  </span>
-                  {price.originalPrice && price.originalPrice > price.price && (
-                    <span className="text-sm text-gray-500 line-through">
-                      ${price.originalPrice.toFixed(2)}
-                    </span>
-                  )}
-                </div>
+                <RegionalPrice
+                  price={price.price}
+                  originalPrice={price.originalPrice}
+                  currency={price.currency}
+                  country={country}
+                  size="sm"
+                />
               )}
             </div>
           </div>
@@ -80,7 +77,6 @@ export default function StickyCtaBar({ buttons, productCode, price, productName,
                 href={btn.href}
                 target="_blank"
                 rel='nofollow sponsored noopener'
-                onClick={() => trackAffiliateClick(productCode, btn.platform, btn.href, 'sticky_bar')}
                 data-product-code={productCode}
                 data-platform={btn.platform}
                 className={`relative flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-semibold text-white overflow-hidden transition-all duration-200 hover:scale-105 active:scale-95 ${

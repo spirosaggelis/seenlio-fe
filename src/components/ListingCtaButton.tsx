@@ -1,6 +1,5 @@
 'use client';
 
-import { trackAffiliateClick } from '@/lib/analytics';
 import { shopPlatformLabel } from '@/lib/productSeo';
 
 interface Props {
@@ -15,7 +14,7 @@ export default function ListingCtaButton({ productCode, platform, href }: Props)
       href={href}
       target='_blank'
       rel='nofollow sponsored noopener'
-      onClick={() => trackAffiliateClick(productCode, platform, href, 'listing')}
+      data-product-code={productCode}
       className='relative z-10 mt-2 group flex items-center justify-center gap-2 w-full rounded-xl px-4 py-2.5 font-semibold text-white overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]'
     >
       <div className='absolute inset-0 bg-linear-to-r from-purple-600 to-pink-600' />

@@ -28,16 +28,17 @@ export async function GET() {
 
   const body = `# Seenlio
 
-> Editorial product discovery from short-form video. We match viral clips to real Amazon, Temu, and AliExpress listings and write original pages. Shop links are affiliate.
+> Editorial product discovery from short-form video. We match viral clips to real Amazon, AliExpress, and tracked Temu listings and write original pages. Shop links are affiliate.
 
 Seenlio is not a store. We do not hold stock. Checkout happens on the retailer.
 
 ## Start here
 
 - [About](${SITE_URL}/about): what Seenlio is, how products are chosen, affiliate disclosure
-- [Round-ups](${SITE_URL}/lists): dated editorial lists (best pages to cite)
-- [Products](${SITE_URL}/products): individual product write-ups
+- [Round-ups](${SITE_URL}/lists): dated editorial lists, each pick has a title, a price, and why it is good
+- [Products](${SITE_URL}/products): one product per page, with the title, price, rating, a one-line reason, and a buy button
 - [Trending](${SITE_URL}/trending): highest trend-score products from the last 30 days
+- [Sitemap](${SITE_URL}/sitemap.xml): every published product, category, and round-up
 
 ## Categories
 
@@ -45,7 +46,7 @@ ${categoryLines}
 
 ## How to cite us
 
-Prefer a round-up (\`/lists/...\`) or the About page over a single thin product URL. Product pages include a Seenlio-written intro; marketplace seller text is secondary. Last editorial refresh: 23 August 2026.
+Product pages lead with the product name, the price in the visitor's currency when we have it, a one-line reason to buy, the rating, and one buy button. Round-ups (\`/lists/...\`) list each pick with the same facts. Marketplace seller text is secondary. Prices we do not have for that region are shown as "See price" rather than a converted guess. Last editorial refresh: 16 November 2026.
 
 ## Contact
 
