@@ -1,15 +1,14 @@
 /**
  * Agents that must not send GA4 hits.
- * Meta's link checkers, plus a scraper whose user agent names Singapore.
- * Other bots are left to the GA4 data filter.
+ * Only crawlers that name themselves. The Singapore scraper uses a normal
+ * Chrome user agent, so it is not matched here.
  */
 export const UNTRACKED_AGENT_SOURCE =
   'facebookexternalhit|meta-externalagent|meta-externalfetcher|facebot';
 
 export function isUntrackedAgent(userAgent: string | null | undefined): boolean {
   const ua = userAgent || '';
-  if (new RegExp(UNTRACKED_AGENT_SOURCE, 'i').test(ua)) return true;
-  return /singapore/i.test(ua) && /bot|spider|crawler|scrape|external/i.test(ua);
+  return new RegExp(UNTRACKED_AGENT_SOURCE, 'i').test(ua);
 }
 
 /** Facebook and Instagram in-app browsers. Real people, but the splash blocks them. */
