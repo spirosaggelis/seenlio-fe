@@ -10,7 +10,7 @@ export default function GtmSnippet() {
   if (!GTM_ID) return null;
 
   const snippet = `
-if (/(?:${UNTRACKED_AGENT_SOURCE})/i.test(navigator.userAgent || '') || (/singapore/i.test(navigator.userAgent || '') && /bot|spider|crawler|scrape|external/i.test(navigator.userAgent || ''))) {
+if (/(?:${UNTRACKED_AGENT_SOURCE})/i.test(navigator.userAgent || '')) {
 } else {
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}

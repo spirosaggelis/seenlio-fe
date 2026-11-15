@@ -11,16 +11,16 @@ export const AMAZON_COM = 'amazon.com';
 export const AMAZON_DE = 'amazon.de';
 export const AMAZON_UK = 'amazon.co.uk';
 
-/** EU member states. UK is not in this set; it has its own store. */
+/** EU member states. UK and Ireland use amazon.co.uk; Ireland is not in this set. */
 const EU_COUNTRIES = new Set([
   'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR',
-  'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK',
+  'HU', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK',
   'SI', 'ES', 'SE',
 ]);
 
 export function amazonDomainForCountry(country: string): string {
   const code = (country || '').trim().toUpperCase();
-  if (code === 'GB' || code === 'UK') return AMAZON_UK;
+  if (code === 'GB' || code === 'UK' || code === 'IE') return AMAZON_UK;
   if (EU_COUNTRIES.has(code)) return AMAZON_DE;
   return AMAZON_COM;
 }
