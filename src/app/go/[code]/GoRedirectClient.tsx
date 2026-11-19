@@ -22,7 +22,6 @@ interface GoRedirectClientProps {
   productName?: string;
   productImage: string | null;
   priceText: string | null;
-  seePrice: boolean;
   tracking: GoTrackingFields;
   /** In-app browsers skip the animation and leave immediately. */
   instant?: boolean;
@@ -35,7 +34,6 @@ export default function GoRedirectClient({
   productName,
   productImage,
   priceText,
-  seePrice,
   tracking,
   instant = false,
 }: GoRedirectClientProps) {
@@ -113,9 +111,6 @@ export default function GoRedirectClient({
 
           {priceText && (
             <p className='text-2xl font-bold gradient-text mb-5'>{priceText}</p>
-          )}
-          {!priceText && seePrice && (
-            <p className='text-lg font-semibold text-gray-300 mb-5'>See price</p>
           )}
 
           <h1 className='text-base font-semibold text-white leading-snug mb-5'>

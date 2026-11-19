@@ -1,7 +1,9 @@
 /**
  * IndexNow ping. Reads INDEXNOW_KEY from the environment.
  * If the key is missing, this returns without calling the network.
- * Do not commit a key. The public key file is served from middleware.
+ * Bing verifies the key from web/public/{key}.txt, which must match
+ * the key the publisher sends. Middleware also serves that file when
+ * INDEXNOW_KEY is set.
  */
 
 const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow';
