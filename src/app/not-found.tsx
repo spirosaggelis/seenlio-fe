@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '404 — Lost in the Void | Seenlio',
+  title: '404 — Lost in the Void',
   description:
     'This page has gone viral… in the wrong direction. Let us help you find what you were looking for.',
   robots: { index: false, follow: false },
