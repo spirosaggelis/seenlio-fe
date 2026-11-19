@@ -15,7 +15,7 @@ export function VisitorCountryProvider({ children }: { children: React.ReactNode
         if (!cancelled && data?.country) setCountry(String(data.country));
       })
       .catch(() => {
-        // Leave the country unknown so we show "See price" instead of the wrong currency.
+        // Leave the country unknown. Prices still show in the currency we stored.
       });
     return () => {
       cancelled = true;

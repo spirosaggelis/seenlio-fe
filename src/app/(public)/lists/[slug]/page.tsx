@@ -1,5 +1,4 @@
 import { Metadata } from 'next';
-import { headers } from 'next/headers';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
@@ -18,8 +17,6 @@ import HubLinks from '@/components/HubLinks';
 import { faqJsonLd, listicleFaqItems } from '@/lib/editorialFaq';
 import RegionalPrice from '@/components/RegionalPrice';
 import { isHiddenTemuProduct } from '@/lib/temuAffiliate';
-import { getVisitorCountry } from '@/lib/affiliateDestination';
-import { currencyForCountry } from '@/lib/amazonRouting';
 import { editorialLastmod } from '@/lib/sitemap';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
@@ -155,7 +152,6 @@ function priceTierLabel(tier: string | undefined) {
 
 export default async function ListiclePage({ params }: PageProps) {
   const { slug } = await params;
-  const country = getVisitorCountry(await headers(), null);
   const listicle = (await getListicleBySlug(slug)) as FullListicle | null;
   if (!listicle) notFound();
 
@@ -250,12 +246,10 @@ export default async function ListiclePage({ params }: PageProps) {
                 const currency = (product.pricePoints?.[0]?.currency || 'USD').toUpperCase();
                 const page = product.slug ? `${SITE_URL}/products/${product.slug}` : undefined;
                 if (!page) return undefined;
-                const showAmount =
-                  amount != null && (!country || currency === currencyForCountry(country));
                 return {
                   '@type': 'Offer',
                   url: page,
-                  ...(showAmount && amount != null
+                  ...(amount != null
                     ? { price: amount.toFixed(2), priceCurrency: currency }
                     : {}),
                 };
@@ -437,7 +431,6 @@ export default async function ListiclePage({ params }: PageProps) {
                         <RegionalPrice
                           price={price}
                           currency={product.pricePoints?.[0]?.currency}
-                          country={country}
                           size='sm'
                         />
                       ) : (

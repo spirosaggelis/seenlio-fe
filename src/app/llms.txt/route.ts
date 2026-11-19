@@ -48,7 +48,7 @@ ${categoryLines}
 
 ## How to cite us
 
-Product pages lead with the product name, the price when we have it in the visitor's currency, and a Seenlio-written description. Round-ups (\`/lists/...\`) list each pick with original commentary. Marketplace seller text is not the page. Prices we do not have for that region are shown as "See price" rather than a converted guess. We do not publish retailer star ratings as our own. Last editorial refresh: 19 November 2026.
+Product pages lead with the product name, the stored price in its own currency, and a Seenlio-written description. Round-ups (\`/lists/...\`) list each pick with original commentary. Marketplace seller text is not the page. We show the catalog price we saved. We do not convert it into another currency. "See price" means the catalog has no numeric price. We do not publish retailer star ratings as our own. Last editorial refresh: 19 November 2026.
 
 ## Contact
 

@@ -1,10 +1,8 @@
 import { Metadata } from "next";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProduct, getProducts, getListiclesForProduct, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
 import { proxyImage } from "@/lib/imageProxy";
-import { getVisitorCountry } from "@/lib/affiliateDestination";
 import { resolveListingProducts } from "@/lib/affiliateListing";
 import TrendBadge from "@/components/TrendBadge";
 import RegionalPrice from "@/components/RegionalPrice";
@@ -37,7 +35,7 @@ import EditorialFaq from "@/components/EditorialFaq";
 import HubLinks from "@/components/HubLinks";
 import { faqJsonLd, productFaqItems } from "@/lib/editorialFaq";
 
-/** Shop links still resolve on /go. The page itself reads the visitor country for the price. */
+/** Shop links still resolve on /go. The price shown is the stored listing price. */
 export const revalidate = 3600;
 
 interface AffiliateLink {
@@ -186,7 +184,6 @@ const platformGradients: Record<string, string> = {
 
 export default async function ProductPage({ params }: PageProps) {
   const { slug } = await params;
-  const country = getVisitorCountry(await headers(), null);
   const product = (await getProduct(slug)) as ProductData | null;
   if (!product) notFound();
 
@@ -281,7 +278,6 @@ export default async function ProductPage({ params }: PageProps) {
   const offer = productOfferJsonLd({
     price: currentPrice?.price,
     currency: currentPrice?.currency,
-    country,
     pageUrl,
   });
   const schemaDescription = product.seo?.structuredData?.editorialIntro?.trim()
@@ -377,7 +373,6 @@ export default async function ProductPage({ params }: PageProps) {
                   price={currentPrice.price}
                   originalPrice={currentPrice.originalPrice}
                   currency={currentPrice.currency}
-                  country={country}
                   size="lg"
                 />
               ) : (
@@ -605,7 +600,6 @@ export default async function ProductPage({ params }: PageProps) {
         <StickyCtaBar
           buttons={ctaButtons.slice(0, 1)}
           productCode={product.productCode}
-          country={country}
           price={currentPrice ? { price: currentPrice.price, currency: currentPrice.currency, originalPrice: currentPrice.originalPrice } : undefined}
           productName={shortName}
           imageUrl={primaryImage}

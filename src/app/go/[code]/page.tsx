@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import GoRedirectClient from './GoRedirectClient';
 import GtmSnippet from '@/components/GtmSnippet';
-import { CURRENCY_SYMBOL, currencyForCountry } from '@/lib/amazonRouting';
+import { CURRENCY_SYMBOL } from '@/lib/amazonRouting';
 import type { AffiliatePattern } from '@/lib/affiliateTypes';
 import {
   getVisitorCountry,
@@ -136,10 +136,10 @@ export default async function GoPage({
 
   const price = product.pricePoints?.[0] || null;
   const storedCurrency = (price?.currency || 'USD').toUpperCase();
-  const showAmount = price?.price != null && storedCurrency === currencyForCountry(country);
-  const priceText = showAmount
-    ? `${CURRENCY_SYMBOL[storedCurrency] || ''}${price!.price.toFixed(2)}`
-    : null;
+  const priceText =
+    price?.price != null
+      ? `${CURRENCY_SYMBOL[storedCurrency] || `${storedCurrency} `}${price.price.toFixed(2)}`
+      : null;
 
   return (
     <>
@@ -151,7 +151,6 @@ export default async function GoPage({
         productName={product.name}
         productImage={primaryImage}
         priceText={priceText}
-        seePrice={price?.price != null && !showAmount}
         instant={isInAppBrowser(userAgent)}
         tracking={{
           product_code: product.productCode,

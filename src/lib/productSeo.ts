@@ -1,4 +1,3 @@
-import { currencyForCountry } from './amazonRouting';
 
 export const PLATFORM_LABELS: Record<string, string> = {
   amazon: 'Amazon',
@@ -216,29 +215,23 @@ export function offerValidUntil(days = 30): string {
 }
 
 /**
- * Offer for the product page. Numeric price only when the page shows that
- * amount. No availability: we do not know retailer stock.
+ * Offer for the product page. The amount is the stored listing price in its
+ * own currency. No availability: we do not know retailer stock.
  */
 export function productOfferJsonLd(input: {
   price?: number | null;
   currency?: string | null;
-  country: string;
   pageUrl: string;
 }): Record<string, unknown> | null {
   if (input.price == null || Number.isNaN(input.price)) return null;
   const currency = (input.currency || 'USD').toUpperCase();
-  const country = (input.country || '').trim();
-  const showAmount = !country || currency === currencyForCountry(country);
-  const offer: Record<string, unknown> = {
+  return {
     '@type': 'Offer',
     url: input.pageUrl,
+    price: input.price,
+    priceCurrency: currency,
+    priceValidUntil: offerValidUntil(30),
   };
-  if (showAmount) {
-    offer.price = input.price;
-    offer.priceCurrency = currency;
-    offer.priceValidUntil = offerValidUntil(30);
-  }
-  return offer;
 }
 
 /** Category blurbs in Strapi still name the closed Temu programme. */

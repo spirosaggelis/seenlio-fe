@@ -13,13 +13,12 @@ interface StickyCtaBarProps {
     icon?: string;
   }>;
   productCode: string;
-  country?: string;
   price?: { price: number; currency: string; originalPrice?: number };
   productName: string;
   imageUrl?: string;
 }
 
-export default function StickyCtaBar({ buttons, productCode, country, price, productName, imageUrl }: StickyCtaBarProps) {
+export default function StickyCtaBar({ buttons, productCode, price, productName, imageUrl }: StickyCtaBarProps) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -62,7 +61,6 @@ export default function StickyCtaBar({ buttons, productCode, country, price, pro
                   price={price.price}
                   originalPrice={price.originalPrice}
                   currency={price.currency}
-                  country={country}
                   size="sm"
                 />
               )}

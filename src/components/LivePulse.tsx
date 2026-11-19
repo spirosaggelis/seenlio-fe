@@ -57,7 +57,14 @@ export default async function LivePulse() {
           {loop.map((p, idx) => {
             const score = Math.round(p.trendScore ?? 0);
             const price = p.pricePoints?.[0];
-            const symbol = price?.currency === 'EUR' ? '€' : price?.currency === 'GBP' ? '£' : price?.currency === 'USD' ? '$' : '';
+            const code = (price?.currency || '').toUpperCase();
+            const symbol = code === 'EUR' ? '€' : code === 'GBP' ? '£' : code === 'USD' ? '$' : '';
+            const priceLabel =
+              price?.price == null
+                ? ''
+                : symbol
+                  ? `${symbol}${price.price.toFixed(2)}`
+                  : `${price.price.toFixed(2)}${code ? ` ${code}` : ''}`;
             return (
               <Link
                 key={`${p.id}-${idx}`}
@@ -72,9 +79,9 @@ export default async function LivePulse() {
                 <span className='text-xs text-gray-200 group-hover:text-white transition-colors whitespace-nowrap max-w-[240px] truncate'>
                   {p.name}
                 </span>
-                {price?.price !== undefined && symbol && (
+                {priceLabel && (
                   <span className='text-[11px] font-semibold text-cyan-300'>
-                    {symbol}{price.price.toFixed(2)}
+                    {priceLabel}
                   </span>
                 )}
               </Link>
