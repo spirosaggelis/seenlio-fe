@@ -8,7 +8,6 @@ import { getVisitorCountry } from "@/lib/affiliateDestination";
 import { resolveListingProducts } from "@/lib/affiliateListing";
 import TrendBadge from "@/components/TrendBadge";
 import RegionalPrice from "@/components/RegionalPrice";
-import StarRating from "@/components/StarRating";
 import ProductCard from "@/components/ProductCard";
 import PlatformBadge from "@/components/PlatformBadge";
 import ProductImageGallery from "@/components/ProductImageGallery";
@@ -24,12 +23,14 @@ import {
   affiliateGoHref,
   breadcrumbJsonLd,
   displayName,
+  fixMojibake,
   inferBrand,
   isMarketplaceBlurb,
-  offerValidUntil,
   pageTitle,
   productEditorialIntro,
+  productOfferJsonLd,
   solvesLine,
+  stringList,
 } from "@/lib/productSeo";
 import AffiliateDisclosure from "@/components/AffiliateDisclosure";
 import EditorialFaq from "@/components/EditorialFaq";
@@ -90,6 +91,10 @@ interface ProductData {
     metaDescription?: string;
     structuredData?: {
       editorialIntro?: string;
+      whoFor?: string;
+      pros?: string[];
+      cons?: string[];
+      faq?: Array<{ question?: string; answer?: string }>;
     };
   };
 }
@@ -127,7 +132,7 @@ type PageProps = {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const product = (await getProduct(slug)) as ProductData | null;
-  if (!product) return { title: "Product Not Found" };
+  if (!product) notFound();
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com";
   const productUrl = `${siteUrl}/products/${product.slug}`;
@@ -139,7 +144,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const rawDesc =
     product.seo?.metaDescription ||
     product.shortDescription ||
-    product.description ||
+    productEditorialIntro(product) ||
     product.name;
   const description =
     rawDesc.length > 155 ? rawDesc.slice(0, 152).trimEnd() + "…" : rawDesc;
@@ -264,51 +269,43 @@ export default async function ProductPage({ params }: PageProps) {
   const solves = solvesLine(product);
   const shortName = displayName(product.name, product.seo?.metaTitle);
   const brandName = inferBrand(product.name);
+  const sellerText = fixMojibake(product.description || "");
   const sellerCopy =
-    product.description && !isMarketplaceBlurb(product.description, product.name)
-      ? product.description
-      : product.description && product.description.trim() !== editorialIntro
-        ? product.description
-        : "";
+    sellerText && !isMarketplaceBlurb(sellerText, product.name) && sellerText.trim() !== editorialIntro.trim()
+      ? sellerText
+      : "";
+  const whoFor = fixMojibake(product.seo?.structuredData?.whoFor || "").trim();
+  const pros = stringList(product.seo?.structuredData?.pros, 3);
+  const cons = stringList(product.seo?.structuredData?.cons, 2);
+  const pageUrl = `${siteUrl}/products/${product.slug}`;
+  const offer = productOfferJsonLd({
+    price: currentPrice?.price,
+    currency: currentPrice?.currency,
+    country,
+    pageUrl,
+  });
+  const schemaDescription = product.seo?.structuredData?.editorialIntro?.trim()
+    ? editorialIntro
+    : fixMojibake(product.seo?.metaDescription?.trim() || '') || editorialIntro;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: shortName,
-    description: solves,
+    description: schemaDescription,
     image: product.media
       ?.filter((m) => m.type !== "video" && m.url)
       .map((m) => proxyImage(m.url)) || [],
     sku: product.productCode,
     ...(brandName ? { brand: { "@type": "Brand", name: brandName } } : {}),
-    url: `${siteUrl}/products/${product.slug}`,
-    ...(product.rating != null && product.rating > 0
-      ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: product.rating,
-            bestRating: 5,
-            ...(product.reviewCount ? { reviewCount: product.reviewCount } : {}),
-          },
-        }
-      : {}),
-    ...(currentPrice
-      ? {
-          offers: {
-            "@type": "Offer",
-            price: currentPrice.price,
-            priceCurrency: currentPrice.currency || "USD",
-            url: `${siteUrl}/products/${product.slug}`,
-            priceValidUntil: offerValidUntil(30),
-          },
-        }
-      : {}),
+    url: pageUrl,
+    ...(offer ? { offers: offer } : {}),
   };
-  const faqs = productFaqItems({
+  const faq = productFaqItems({
     shortName,
     editorialIntro,
-    categoryName: activeCategories[0]?.name,
     sourcePlatform: product.sourcePlatform,
     productCode: product.productCode,
+    storedFaq: product.seo?.structuredData?.faq,
   });
   const crumbs = [
     { name: "Home", path: "/" },
@@ -328,10 +325,12 @@ export default async function ProductPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(siteUrl, crumbs)) }}
       />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(faqs)) }}
-      />
+      {faq.emitJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(faq.items)) }}
+        />
+      ) : null}
       {/* Analytics tracker */}
       <ProductViewTracker productCode={product.productCode} />
 
@@ -373,12 +372,6 @@ export default async function ProductPage({ params }: PageProps) {
             <p className="text-base leading-relaxed text-gray-300">{solves}</p>
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              {product.rating != null && product.rating > 0 && (
-                <StarRating
-                  rating={product.rating}
-                  reviewCount={product.reviewCount}
-                />
-              )}
               {currentPrice ? (
                 <RegionalPrice
                   price={currentPrice.price}
@@ -440,7 +433,7 @@ export default async function ProductPage({ params }: PageProps) {
         </div>
 
         {/* Description + video — combined section */}
-        {(editorialIntro || product.description || productVideo) && (
+        {(editorialIntro || sellerCopy || productVideo || whoFor || pros.length > 0 || cons.length > 0) && (
           <div className="mt-10 relative overflow-hidden rounded-3xl border border-white/10 bg-linear-to-br from-[#0f0a1f] via-[#0a0a14] to-[#0a1420]">
             {/* decorative glow blobs */}
             <div
@@ -465,10 +458,44 @@ export default async function ProductPage({ params }: PageProps) {
                   </div>
                 )}
 
-                <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 mb-3">
-                  Why it is trending
-                </h3>
+                <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 mb-3">
+                  About this product
+                </h2>
                 <p className="text-gray-300 leading-relaxed mb-4">{editorialIntro}</p>
+                {whoFor ? (
+                  <p className="text-sm leading-relaxed text-gray-300 mb-4">
+                    <span className="font-semibold text-white">Who it&apos;s for. </span>
+                    {whoFor}
+                  </p>
+                ) : null}
+                {(pros.length > 0 || cons.length > 0) && (
+                  <div className="mb-4 grid gap-4 sm:grid-cols-2">
+                    {pros.length > 0 && (
+                      <div>
+                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
+                          Pros
+                        </h3>
+                        <ul className="list-disc space-y-1 pl-4 text-sm text-gray-300">
+                          {pros.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {cons.length > 0 && (
+                      <div>
+                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
+                          Things to check
+                        </h3>
+                        <ul className="list-disc space-y-1 pl-4 text-sm text-gray-300">
+                          {cons.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {sellerCopy ? (
                   <details className="group mt-2">
                     <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 hover:text-gray-300">
@@ -571,7 +598,7 @@ export default async function ProductPage({ params }: PageProps) {
               hint: l.angleHook,
             }))}
         />
-        <EditorialFaq items={faqs} />
+        <EditorialFaq items={faq.items} />
       </div>
       {/* Sticky CTA bar — appears when main CTA scrolls out */}
       {ctaButtons.length > 0 && (

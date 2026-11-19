@@ -163,3 +163,68 @@ export async function fetchProductMonthBuckets(): Promise<ProductMonthBucket[]> 
 export function lastmodXml(lastmod: string | null | undefined): string {
   return lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : '';
 }
+
+/** Latest real timestamp. Never earlier than datePublished when that is set. */
+export function editorialLastmod(
+  published?: string | null,
+  ...rest: Array<string | null | undefined>
+): string | null {
+  const publishedIso = toLastmod(published);
+  const times = [publishedIso, ...rest.map((value) => toLastmod(value))].filter(
+    (value): value is string => Boolean(value),
+  );
+  if (times.length === 0) return null;
+  const latest = times.reduce((a, b) => (a > b ? a : b));
+  if (publishedIso && latest < publishedIso) return publishedIso;
+  return latest;
+}
+
+const PUBLISHED_VISIBLE_PRODUCT_FILTERS = {
+  'filters[productStatus][$eq]': 'published',
+  'filters[$or][0][sourcePlatform][$null]': 'true',
+  'filters[$or][1][sourcePlatform][$ne]': 'temu',
+  'filters[$or][2][affiliateLinks][url][$contains]': 'temu.to',
+};
+
+export interface CategorySitemapEntry {
+  slug: string;
+  lastmod: string | null;
+}
+
+/** Category lastmod moves when a product in that category is published or updated. */
+export async function fetchCategorySitemapEntries(): Promise<CategorySitemapEntry[]> {
+  const categories: Array<{ slug: string; updatedAt?: string }> = [];
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const params = new URLSearchParams({
+      'fields[0]': 'slug',
+      'fields[1]': 'updatedAt',
+      'pagination[pageSize]': '100',
+      'pagination[page]': String(page),
+      'filters[isActive][$eq]': 'true',
+    });
+    const data = await strapiFetch('/categories', params);
+    for (const row of data.data || []) {
+      const cat = unwrapRow<{ slug?: string; updatedAt?: string }>(row);
+      if (cat.slug) categories.push({ slug: cat.slug, updatedAt: cat.updatedAt });
+    }
+    const pageCount = data.meta?.pagination?.pageCount ?? 1;
+    if (page < pageCount) page++;
+    else hasMore = false;
+  }
+
+  return Promise.all(
+    categories.map(async (cat) => {
+      const productUpdated = await fetchLatestField('products', 'updatedAt', {
+        ...PUBLISHED_VISIBLE_PRODUCT_FILTERS,
+        'filters[categories][slug][$eq]': cat.slug,
+      });
+      return {
+        slug: cat.slug,
+        lastmod: editorialLastmod(null, cat.updatedAt, productUpdated),
+      };
+    }),
+  );
+}

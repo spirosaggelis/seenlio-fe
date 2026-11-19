@@ -26,9 +26,28 @@ async function isDashboardAuthed(req: NextRequest): Promise<boolean> {
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
 
+  const indexNowKey = process.env.INDEXNOW_KEY?.trim();
+  if (indexNowKey && pathname === `/${indexNowKey}.txt`) {
+    return new NextResponse(indexNowKey, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'public, max-age=86400',
+      },
+    });
+  }
+
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-pathname', pathname);
+
+  if (pathname === '/go' || pathname.startsWith('/go/')) {
+    const res = NextResponse.next({ request: { headers: requestHeaders } });
+    res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    return res;
+  }
+
   if (pathname.startsWith('/dashboard') && pathname !== '/dashboard/login') {
     if (DASHBOARD_AUTH_DISABLED) {
-      return NextResponse.next();
+      return NextResponse.next({ request: { headers: requestHeaders } });
     }
     const authed = await isDashboardAuthed(req);
     if (!authed) {
@@ -37,10 +56,10 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       loginUrl.searchParams.set('from', pathname);
       return NextResponse.redirect(loginUrl);
     }
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {

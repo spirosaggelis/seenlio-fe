@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import Link from 'next/link';
 import Image from 'next/image';
 import ScrollToTop from '@/components/ScrollToTop';
 import MobileMenu from '@/components/MobileMenu';
 import ChannelMatrix from '@/components/ChannelMatrix';
 import LivePulse from '@/components/LivePulse';
+import DeferredLivePulse from '@/components/DeferredLivePulse';
 import GtmSnippet from '@/components/GtmSnippet';
 import GtmNoscript from '@/components/GtmNoscript';
 import HeaderSearch from '@/components/HeaderSearch';
@@ -18,9 +20,6 @@ export const metadata: Metadata = {
   },
   description:
     'Discover the most trending consumer products featured in viral videos. Find kitchen gadgets, tech accessories, home tools, and the next big thing — before everyone else.',
-  alternates: {
-    canonical: '/',
-  },
   openGraph: {
     title: "Seenlio — Discover What's Trending",
     description:
@@ -174,7 +173,7 @@ function Footer({ categories }: { categories: { name: string; slug: string }[] }
           </div>
         </div>
 
-        <LivePulse />
+        <PulseSlot />
 
         <ChannelMatrix />
 
@@ -188,6 +187,12 @@ function Footer({ categories }: { categories: { name: string; slug: string }[] }
       </div>
     </footer>
   );
+}
+
+async function PulseSlot() {
+  const path = (await headers()).get('x-pathname') || '';
+  const isProductPage = /^\/products\/[^/]+/.test(path);
+  return isProductPage ? <DeferredLivePulse /> : <LivePulse />;
 }
 
 export default async function PublicLayout({

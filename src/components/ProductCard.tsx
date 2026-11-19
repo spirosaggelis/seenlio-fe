@@ -2,7 +2,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import TrendBadge from './TrendBadge';
 import RegionalPrice from './RegionalPrice';
-import StarRating from './StarRating';
 import ListingCtaButton from './ListingCtaButton';
 import PlatformBadge from './PlatformBadge';
 import { proxyImage } from '@/lib/imageProxy';
@@ -48,8 +47,6 @@ export default function ProductCard({
   imageUrl,
   pricePoints,
   categories,
-  rating,
-  reviewCount,
   trendScore,
 }: ProductCardProps) {
   const price = pricePoints?.[0];
@@ -114,11 +111,6 @@ export default function ProductCard({
           <p className='text-sm text-gray-400 line-clamp-2 leading-relaxed'>
             {blurb}
           </p>
-        )}
-
-        {/* Rating */}
-        {rating !== undefined && rating > 0 && (
-          <StarRating rating={rating} reviewCount={reviewCount} compact />
         )}
 
         {/* Spacer */}

@@ -1,16 +1,17 @@
 import { Metadata } from 'next';
 import { getPublishedListicles } from '@/lib/strapi';
 import ListicleCard, { type ListicleCardData } from '@/components/ListicleCard';
+import { collectionPageJsonLd } from '@/lib/productSeo';
 
 export const metadata: Metadata = {
   title: 'Round-ups & gift guides',
   description:
-    'Curated round-ups of trending products from Amazon, AliExpress and Temu — grouped by use case, price tier, and category.',
+    'Curated round-ups of trending products from Amazon and AliExpress — grouped by use case, price tier, and category.',
   alternates: { canonical: '/lists' },
   openGraph: {
     title: 'Seenlio round-ups & gift guides',
     description:
-      'Curated round-ups of trending products from Amazon, AliExpress and Temu.',
+      'Curated round-ups of trending products from Amazon and AliExpress.',
     url: '/lists',
     images: [{ url: '/logo.png' }],
   },
@@ -35,6 +36,26 @@ export default async function ListsIndexPage() {
 
   return (
     <div className='min-h-screen bg-[#0a0a0f]'>
+      <script
+        type='application/ld+json'
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(collectionPageJsonLd({
+            siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com',
+            path: '/lists',
+            name: 'Round-ups',
+            crumbs: [
+              { name: 'Home', path: '/' },
+              { name: 'Round-ups', path: '/lists' },
+            ],
+            items: lists
+              .filter((list) => list.slug && list.title)
+              .map((list) => ({
+                name: String(list.title),
+                path: `/lists/${list.slug}`,
+              })),
+          })),
+        }}
+      />
       <div className='mx-auto max-w-6xl px-4 py-16'>
         <div className='mb-12 text-center'>
           <div className='inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-300'>

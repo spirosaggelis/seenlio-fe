@@ -1,9 +1,26 @@
+import { currencyForCountry } from './amazonRouting';
+
 export const PLATFORM_LABELS: Record<string, string> = {
   amazon: 'Amazon',
   aliexpress: 'AliExpress',
   temu: 'Temu',
   tiktok_shop: 'TikTok Shop',
 };
+
+/**
+ * First word of a marketplace title is not a brand ("Cordless", "Stay").
+ * Only these names are emitted as schema.org Brand.
+ */
+const KNOWN_BRANDS = new Set([
+  'anker', 'apple', 'asus', 'aukey', 'baseus', 'bose', 'boss', 'bosch',
+  'braun', 'breville', 'canon', 'cosori', 'dewalt', 'dji', 'dyson',
+  'ecoflow', 'esr', 'eufy', 'fitbit', 'garmin', 'google', 'gopro', 'govee',
+  'hydroflask', 'instant', 'jackery', 'jbl', 'keurig', 'kitchenaid', 'lego',
+  'lenovo', 'logitech', 'makita', 'metapen', 'microsoft', 'nespresso',
+  'nike', 'ninja', 'oral-b', 'otterbox', 'owala', 'philips', 'razer',
+  'samsung', 'shark', 'sony', 'spigen', 'stanley', 'ugreen', 'vitamix',
+  'wyze', 'yeti',
+]);
 
 export function shopPlatformLabel(platform?: string): string {
   const key = (platform || '').toLowerCase();
@@ -37,17 +54,11 @@ export function displayName(name: string, seoTitle?: string, max = 62): string {
   return stem || name;
 }
 
-const WEAK_BRANDS = new Set([
-  'the', 'pack', 'new', 'set', 'pcs', '1pc', '2pcs', '2pc', 'pair', 'generic',
-]);
-
-/** Best-effort brand from the listing name. Returns null if it looks like filler. */
+/** Best-effort brand. Returns null unless the first word is a known brand. */
 export function inferBrand(name: string): string | null {
   const first = (name || '').trim().split(/\s+/)[0] || '';
-  const cleaned = first.replace(/[^A-Za-z0-9]/g, '');
-  if (cleaned.length < 2 || cleaned.length > 18) return null;
-  if (WEAK_BRANDS.has(cleaned.toLowerCase())) return null;
-  if (/^\d/.test(cleaned)) return null;
+  const cleaned = first.replace(/[^A-Za-z0-9-]/g, '');
+  if (!cleaned || !KNOWN_BRANDS.has(cleaned.toLowerCase())) return null;
   return cleaned;
 }
 
@@ -60,30 +71,72 @@ export function isMarketplaceBlurb(text: string | undefined, name: string): bool
   return false;
 }
 
-/** Seenlio-authored intro so product pages are not only marketplace copy. */
-export function productEditorialIntro(product: {
+const CP1252_TO_BYTE: Record<number, number> = {
+  0x20ac: 0x80, 0x201a: 0x82, 0x0192: 0x83, 0x201e: 0x84, 0x2026: 0x85,
+  0x2020: 0x86, 0x2021: 0x87, 0x02c6: 0x88, 0x2030: 0x89, 0x0160: 0x8a,
+  0x2039: 0x8b, 0x0152: 0x8c, 0x017d: 0x8e, 0x2018: 0x91, 0x2019: 0x92,
+  0x201c: 0x93, 0x201d: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97,
+  0x02dc: 0x98, 0x2122: 0x99, 0x0161: 0x9a, 0x203a: 0x9b, 0x0153: 0x9c,
+  0x017e: 0x9e, 0x0178: 0x9f,
+};
+
+/** Undo UTF-8 text that was decoded as Latin-1 / Windows-1252 (â€™, Â®, Ã©). */
+export function fixMojibake(text: string): string {
+  if (!text || !/[ÂÃâ]/.test(text)) return text;
+  const bytes: number[] = [];
+  for (const ch of text) {
+    const code = ch.codePointAt(0) ?? 0;
+    if (code <= 0xff) bytes.push(code);
+    else if (CP1252_TO_BYTE[code] != null) bytes.push(CP1252_TO_BYTE[code]);
+    else return text;
+  }
+  const decoded = new TextDecoder('utf-8', { fatal: false }).decode(Uint8Array.from(bytes));
+  if (!decoded || decoded.includes('\uFFFD')) return text;
+  return decoded;
+}
+
+export function stringList(value: unknown, max: number): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string') continue;
+    const text = fixMojibake(item).trim();
+    if (!text) continue;
+    out.push(text);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+type EditorialProduct = {
   name: string;
   sourcePlatform?: string;
-  trendScore?: number;
   categories?: Array<{ name?: string }>;
   seo?: {
+    metaTitle?: string;
     structuredData?: {
       editorialIntro?: string;
     };
   };
-}): string {
-  const stored = product.seo?.structuredData?.editorialIntro?.trim();
-  if (stored) return stored;
-  const platform =
-    PLATFORM_LABELS[(product.sourcePlatform || '').toLowerCase()] ||
-    'Amazon, Temu, and AliExpress';
+};
+
+/** Factual one-liner when the CMS has no product-specific intro. */
+export function factualProductLine(product: EditorialProduct): string {
+  const name = displayName(product.name, product.seo?.metaTitle);
   const category = product.categories?.find((c) => c.name)?.name;
-  const where = category ? ` in ${category}` : '';
-  const score =
-    product.trendScore != null && product.trendScore > 0
-      ? ` It currently scores ${Math.round(product.trendScore)} on Seenlio’s trend index.`
-      : '';
-  return `Seenlio spotted this product trending on ${platform}${where}.${score} We track viral consumer products so you can see what is taking off before it saturates.`;
+  const platform = shopPlatformLabel(product.sourcePlatform);
+  const retailer = platform === 'store' ? 'a retailer' : platform;
+  if (category) {
+    return `${name} is a ${category} product Seenlio found trending on ${retailer}.`;
+  }
+  return `${name} is a product Seenlio found trending on ${retailer}.`;
+}
+
+/** Seenlio-authored intro so product pages are not only marketplace copy. */
+export function productEditorialIntro(product: EditorialProduct): string {
+  const stored = product.seo?.structuredData?.editorialIntro?.trim();
+  if (stored) return fixMojibake(stored);
+  return factualProductLine(product);
 }
 
 export function breadcrumbJsonLd(
@@ -102,27 +155,98 @@ export function breadcrumbJsonLd(
   };
 }
 
-/** One line for the buy box and for agents: why this product is worth a look. */
-export function solvesLine(product: {
+/** Collection page schema from the items actually rendered. Names and URLs only. */
+export function collectionPageJsonLd(input: {
+  siteUrl: string;
+  path: string;
   name: string;
-  shortDescription?: string;
-  categories?: Array<{ name?: string }>;
-  seo?: { structuredData?: { editorialIntro?: string } };
-}): string {
+  crumbs: Array<{ name: string; path: string }>;
+  items: Array<{ name: string; path: string }>;
+}) {
+  const pageUrl = `${input.siteUrl}${input.path}`;
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        name: input.name,
+        url: pageUrl,
+        mainEntity: {
+          '@type': 'ItemList',
+          numberOfItems: input.items.length,
+          itemListElement: input.items.map((item, i) => ({
+            '@type': 'ListItem',
+            position: i + 1,
+            name: item.name,
+            url: item.path.startsWith('http') ? item.path : `${input.siteUrl}${item.path}`,
+          })),
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: input.crumbs.map((crumb, i) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          name: crumb.name,
+          item: crumb.path === '/' ? input.siteUrl : `${input.siteUrl}${crumb.path}`,
+        })),
+      },
+    ],
+  };
+}
+
+/** One line for the buy box: the intro's first sentence, or a factual fallback. */
+export function solvesLine(product: EditorialProduct & { shortDescription?: string }): string {
   const stored = product.seo?.structuredData?.editorialIntro?.trim();
-  const firstSentence = stored?.split(/(?<=[.!?])\s/)[0]?.trim();
+  const firstSentence = stored ? fixMojibake(stored).split(/(?<=[.!?])\s/)[0]?.trim() : '';
   if (firstSentence && firstSentence.length <= 140) return firstSentence;
 
   const short = product.shortDescription?.replace(/\s+/g, ' ').trim();
-  if (short && !isMarketplaceBlurb(short, product.name) && short.length <= 140) return short;
+  if (short && !isMarketplaceBlurb(short, product.name) && short.length <= 140) {
+    return fixMojibake(short);
+  }
 
-  const category = product.categories?.find((item) => item.name)?.name;
-  if (category) return `Solves an everyday ${category.toLowerCase()} problem.`;
-  return 'Solves the problem people keep sharing this for.';
+  return factualProductLine(product);
 }
 
 export function offerValidUntil(days = 30): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Offer for the product page. Numeric price only when the page shows that
+ * amount. No availability: we do not know retailer stock.
+ */
+export function productOfferJsonLd(input: {
+  price?: number | null;
+  currency?: string | null;
+  country: string;
+  pageUrl: string;
+}): Record<string, unknown> | null {
+  if (input.price == null || Number.isNaN(input.price)) return null;
+  const currency = (input.currency || 'USD').toUpperCase();
+  const country = (input.country || '').trim();
+  const showAmount = !country || currency === currencyForCountry(country);
+  const offer: Record<string, unknown> = {
+    '@type': 'Offer',
+    url: input.pageUrl,
+  };
+  if (showAmount) {
+    offer.price = input.price;
+    offer.priceCurrency = currency;
+    offer.priceValidUntil = offerValidUntil(30);
+  }
+  return offer;
+}
+
+/** Category blurbs in Strapi still name the closed Temu programme. */
+export function scrubClosedRetailerClaims(text: string): string {
+  return text
+    .replace(/Amazon,\s*Temu,\s*and\s*AliExpress/gi, 'Amazon and AliExpress')
+    .replace(/Amazon,\s*Temu\s+and\s*AliExpress/gi, 'Amazon and AliExpress')
+    .replace(/Amazon,\s*AliExpress,?\s*and\s*Temu/gi, 'Amazon and AliExpress')
+    .replace(/Amazon,\s*AliExpress,\s*Temu/gi, 'Amazon and AliExpress')
+    .replace(/Amazon,\s*Temu,\s*AliExpress/gi, 'Amazon and AliExpress');
 }

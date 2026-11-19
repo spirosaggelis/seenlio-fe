@@ -10,7 +10,7 @@ import ProductFilterBar from "@/components/ProductFilterBar";
 import PaginationNav from "@/components/PaginationNav";
 import CategoryBrowseTracker from "@/components/CategoryBrowseTracker";
 import CategoryIcon from "@/components/CategoryIcon";
-import { pageTitle } from "@/lib/productSeo";
+import { pageTitle, collectionPageJsonLd, displayName, scrubClosedRetailerClaims } from "@/lib/productSeo";
 import HubLinks from "@/components/HubLinks";
 import {
   buildPriceFilter,
@@ -113,10 +113,11 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   // Layout template already appends " | Seenlio"
   const title = pageTitle(category.seo?.metaTitle || category.name);
 
-  const rawDesc =
+  const rawDesc = scrubClosedRetailerClaims(
     category.seo?.metaDescription ||
     category.description ||
-    `Browse trending ${category.name} products on Seenlio.`;
+    `Browse trending ${category.name} products on Seenlio.`,
+  );
   const description =
     rawDesc.length > 155 ? rawDesc.slice(0, 152).trimEnd() + "…" : rawDesc;
 
@@ -173,6 +174,29 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
   const products = await resolveListingProducts(
     (productsRes.data || []) as Product[],
   );
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com";
+  const categoryDescription = category.description
+    ? scrubClosedRetailerClaims(category.description)
+    : "";
+  const listingPath = priceBucket || sourcePlatform
+    ? `/categories/${category.slug}`
+    : page > 1
+      ? `/categories/${category.slug}?page=${page}`
+      : `/categories/${category.slug}`;
+  const listingLd = collectionPageJsonLd({
+    siteUrl,
+    path: listingPath,
+    name: category.name,
+    crumbs: [
+      { name: "Home", path: "/" },
+      { name: "Products", path: "/products" },
+      { name: category.name, path: `/categories/${category.slug}` },
+    ],
+    items: products.map((product) => ({
+      name: displayName(product.name),
+      path: `/products/${product.slug}`,
+    })),
+  });
   const pagination = (productsRes as { meta?: { pagination?: { pageCount?: number; total?: number } } })
     .meta?.pagination;
   const pageCount = pagination?.pageCount ?? 1;
@@ -191,6 +215,10 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(listingLd) }}
+      />
       <CategoryBrowseTracker slug={slug} />
       {/* Category hero header */}
       <div className="relative overflow-hidden border-b border-white/5">
@@ -231,9 +259,9 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
                   {category.name}
                 </span>
               </h1>
-              {category.description && (
+              {categoryDescription && (
                 <p className="mt-2 text-gray-400 max-w-2xl text-lg">
-                  {category.description}
+                  {categoryDescription}
                 </p>
               )}
             </div>

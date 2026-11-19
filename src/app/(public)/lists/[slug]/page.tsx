@@ -19,6 +19,8 @@ import { faqJsonLd, listicleFaqItems } from '@/lib/editorialFaq';
 import RegionalPrice from '@/components/RegionalPrice';
 import { isHiddenTemuProduct } from '@/lib/temuAffiliate';
 import { getVisitorCountry } from '@/lib/affiliateDestination';
+import { currencyForCountry } from '@/lib/amazonRouting';
+import { editorialLastmod } from '@/lib/sitemap';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
 
@@ -63,6 +65,7 @@ interface FullListicle {
   searchIntent?: string;
   publishedOn?: string;
   generatedAt?: string;
+  updatedAt?: string;
   items?: ListicleItem[];
   products?: ListicleProduct[];
   featuredImage?: { url?: string };
@@ -85,7 +88,7 @@ interface RelatedListicle {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const listicle = (await getListicleBySlug(slug)) as FullListicle | null;
-  if (!listicle) return { title: 'Round-up not found' };
+  if (!listicle) notFound();
   const seoTitle = pageTitle(listicle.seo?.metaTitle || listicle.title || 'Round-up');
   const seoDesc =
     listicle.seo?.metaDescription ||
@@ -220,7 +223,8 @@ export default async function ListiclePage({ params }: PageProps) {
       : `${SITE_URL}/lists/${slug}`;
 
   const publishedIso = listicle.publishedOn || listicle.generatedAt;
-  const modifiedIso = listicle.generatedAt || listicle.publishedOn;
+  const modifiedIso =
+    editorialLastmod(publishedIso, listicle.updatedAt, listicle.generatedAt) || publishedIso;
 
   // 1. ItemList — tells Google this is a ranked round-up
   const ldItemList = {
@@ -241,14 +245,21 @@ export default async function ListiclePage({ params }: PageProps) {
               name: product.name,
               description: (it.commentary || product.shortDescription || '').slice(0, 240),
               url: product.slug ? `${SITE_URL}/products/${product.slug}` : undefined,
-              offers: priceOf(product) != null
-                ? {
-                    '@type': 'Offer',
-                    price: priceOf(product)!.toFixed(2),
-                    priceCurrency: product.pricePoints?.[0]?.currency || 'USD',
-                    url: product.slug ? `${SITE_URL}/products/${product.slug}` : undefined,
-                  }
-                : undefined,
+              offers: (() => {
+                const amount = priceOf(product);
+                const currency = (product.pricePoints?.[0]?.currency || 'USD').toUpperCase();
+                const page = product.slug ? `${SITE_URL}/products/${product.slug}` : undefined;
+                if (!page) return undefined;
+                const showAmount =
+                  amount != null && (!country || currency === currencyForCountry(country));
+                return {
+                  '@type': 'Offer',
+                  url: page,
+                  ...(showAmount && amount != null
+                    ? { price: amount.toFixed(2), priceCurrency: currency }
+                    : {}),
+                };
+              })(),
             }
           : undefined,
       };
@@ -284,8 +295,8 @@ export default async function ListiclePage({ params }: PageProps) {
     ],
   };
 
-  const updatedLabel = publishedIso
-    ? new Date(publishedIso).toLocaleDateString('en-GB', {
+  const updatedLabel = modifiedIso
+    ? new Date(modifiedIso).toLocaleDateString('en-GB', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',

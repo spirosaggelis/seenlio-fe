@@ -4,7 +4,7 @@ import {
   SITEMAP_XML_HEADERS,
   strapiHeaders,
   unwrapRow,
-  toLastmod,
+  editorialLastmod,
   SITEMAP_REVALIDATE,
 } from '@/lib/sitemap';
 
@@ -48,7 +48,7 @@ export async function GET() {
 
   const urls = entries
     .map((e) => {
-      const lastmod = toLastmod(e.publishedOn || e.updatedAt);
+      const lastmod = editorialLastmod(e.publishedOn, e.updatedAt);
       const priority = Math.min(
         0.9,
         Math.max(0.5, 0.5 + ((e.priorityScore || 0) / 100) * 0.4),

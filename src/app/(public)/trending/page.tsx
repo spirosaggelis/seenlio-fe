@@ -3,6 +3,7 @@ import { getTrendingProducts } from "@/lib/strapi";
 import { resolveListingProducts } from "@/lib/affiliateListing";
 import ProductCard from "@/components/ProductCard";
 import ProductGrid from "@/components/ProductGrid";
+import { collectionPageJsonLd, displayName } from "@/lib/productSeo";
 
 /** Shop CTAs resolve geo on /go/[code]; page HTML can be cached. */
 export const revalidate = 300;
@@ -82,6 +83,24 @@ export default async function TrendingPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(collectionPageJsonLd({
+            siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://seenlio.com",
+            path: "/trending",
+            name: "Trending Products",
+            crumbs: [
+              { name: "Home", path: "/" },
+              { name: "Trending", path: "/trending" },
+            ],
+            items: products.map((product) => ({
+              name: displayName(product.name),
+              path: `/products/${product.slug}`,
+            })),
+          })),
+        }}
+      />
       <div className="mx-auto max-w-7xl px-4 py-16">
         {/* Page header */}
         <div className="text-center mb-16">
