@@ -56,7 +56,8 @@ export default async function LivePulse() {
         <div className='flex animate-marquee py-3 w-max'>
           {loop.map((p, idx) => {
             const score = Math.round(p.trendScore ?? 0);
-            const price = p.pricePoints?.[0]?.price;
+            const price = p.pricePoints?.[0];
+            const symbol = price?.currency === 'EUR' ? '€' : price?.currency === 'GBP' ? '£' : price?.currency === 'USD' ? '$' : '';
             return (
               <Link
                 key={`${p.id}-${idx}`}
@@ -71,9 +72,9 @@ export default async function LivePulse() {
                 <span className='text-xs text-gray-200 group-hover:text-white transition-colors whitespace-nowrap max-w-[240px] truncate'>
                   {p.name}
                 </span>
-                {price !== undefined && (
+                {price?.price !== undefined && symbol && (
                   <span className='text-[11px] font-semibold text-cyan-300'>
-                    ${price.toFixed(2)}
+                    {symbol}{price.price.toFixed(2)}
                   </span>
                 )}
               </Link>

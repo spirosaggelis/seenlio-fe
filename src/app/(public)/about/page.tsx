@@ -10,7 +10,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: 'About Seenlio',
   description:
-    'Seenlio is an editorial product-discovery site. We match short-form video trends to real retailer listings, write original pages and round-ups, and use affiliate shop links. Last updated 23 August 2026.',
+    'Seenlio is an editorial product-discovery site. We match short-form video trends to real Amazon and AliExpress listings, write original pages and round-ups, and use affiliate shop links. Last updated 19 November 2026.',
   alternates: { canonical: '/about' },
   openGraph: {
     title: 'About Seenlio',
@@ -39,7 +39,7 @@ const TIMELINE = [
   {
     icon: '2',
     title: 'The pipeline',
-    text: 'We built a pipeline that watches Amazon, Temu, and AliExpress listings that match those clips, scores them, and writes a Seenlio page instead of copying the seller dump.',
+    text: 'We built a pipeline that watches Amazon and AliExpress listings that match those clips, scores them, and writes a Seenlio page instead of copying the seller dump.',
   },
   {
     icon: '3',
@@ -61,7 +61,7 @@ const VALUES = [
     glow: 'rgba(6, 182, 212, 0.15)',
     title: 'Transparency',
     description:
-      'Every product has a trend score, real ratings, and multi-platform pricing. We show you the data so you decide — no hidden agendas.',
+      'Every product page shows a trend score and a shop link to the retailer. We do not invent reviews or convert prices into a currency we do not have.',
   },
   {
     gradient: 'from-pink-500 to-orange-400',
@@ -301,7 +301,7 @@ export default async function AboutPage() {
                 step: '01',
                 title: 'Detect',
                 description:
-                  'Discovery jobs pull trending and bestselling listings from Amazon, Temu, and AliExpress and score them against short-video signals.',
+                  'Discovery jobs pull trending and bestselling listings from Amazon and AliExpress and score them against short-video signals.',
                 icon: (
                   <svg className='w-6 h-6' fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor'>
                     <path strokeLinecap='round' strokeLinejoin='round' d='M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z' />

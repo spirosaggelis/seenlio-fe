@@ -1,22 +1,4 @@
-import { getChannels } from '@/lib/strapi';
-import { socialProfileUrl } from '@/lib/siteIdentity';
-
-interface PlatformAccount {
-  id: number;
-  platform: 'youtube' | 'tiktok' | 'instagram' | 'pinterest' | 'facebook';
-  accountName: string;
-  accountId?: string;
-  isActive?: boolean;
-}
-
-interface ChannelData {
-  id: number;
-  name: string;
-  slug?: string;
-  isActive?: boolean;
-  category?: { id: number; name: string; slug: string } | null;
-  platformAccounts?: PlatformAccount[];
-}
+import { BRAND_ACCOUNTS } from '@/lib/siteIdentity';
 
 const PLATFORM_META: Record<
   string,
@@ -69,91 +51,33 @@ const PLATFORM_META: Record<
   },
 };
 
-export default async function ChannelMatrix() {
-  let channels: ChannelData[] = [];
-  try {
-    const res = await getChannels();
-    channels = ((res.data || []) as ChannelData[]).filter(
-      (c) => c.isActive !== false && c.category,
-    );
-  } catch {
-    // Strapi may be unavailable — hide the section gracefully
-    return null;
-  }
-
-  if (channels.length === 0) return null;
-
-  const sorted = [...channels].sort((a, b) =>
-    (a.category?.name ?? '').localeCompare(b.category?.name ?? ''),
-  );
-
+export default function ChannelMatrix() {
   return (
     <div className='mt-14'>
       <div className='flex items-center gap-3 mb-6'>
         <span className='text-xs font-semibold uppercase tracking-[0.2em] text-[var(--fg-primary)]'>
-          Our Channels
+          Seenlio
         </span>
         <div className='h-px flex-1 bg-linear-to-r from-purple-500/40 via-cyan-500/20 to-transparent' />
-        <span className='text-[10px] text-[var(--fg-faint)] uppercase tracking-wider'>
-          One per category
-        </span>
       </div>
 
-      <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
-        {sorted.map((ch) => {
-          const accounts = (ch.platformAccounts || []).filter(
-            (a) => a.isActive !== false,
-          );
+      <div className='flex flex-wrap items-center gap-2'>
+        {BRAND_ACCOUNTS.map((acc) => {
+          const meta = PLATFORM_META[acc.platform];
+          if (!meta) return null;
           return (
-            <div
-              key={ch.id}
-              className='group relative rounded-2xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-purple-500/30 transition-colors p-4 overflow-hidden'
+            <a
+              key={acc.platform}
+              href={acc.url}
+              target='_blank'
+              rel='noopener noreferrer'
+              aria-label={`${meta.label} — ${acc.handle}`}
+              title={`${meta.label} · ${acc.handle}`}
+              className={`inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-gray-300 transition-colors ${meta.color}`}
             >
-              <div
-                aria-hidden
-                className='pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full bg-purple-500/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity'
-              />
-              <div className='relative flex items-center justify-between gap-3'>
-                <div className='min-w-0'>
-                  <p className='text-[10px] uppercase tracking-wider text-[var(--fg-faint)]'>
-                    {ch.category?.name}
-                  </p>
-                  <p className='text-sm font-semibold text-[var(--fg-primary)] truncate'>
-                    {ch.name}
-                  </p>
-                </div>
-                <div className='flex items-center gap-1.5'>
-                  {accounts.length === 0 && (
-                    <span className='text-[10px] text-[var(--fg-faint)] italic'>
-                      coming soon
-                    </span>
-                  )}
-                  {accounts.map((acc) => {
-                    const meta = PLATFORM_META[acc.platform];
-                    if (!meta) return null;
-                    const url = socialProfileUrl(
-                      acc.platform,
-                      acc.accountName,
-                      acc.accountId,
-                    );
-                    if (!url) return null;
-                    return (
-                      <a
-                        key={acc.id}
-                        href={url}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        aria-label={`${meta.label} — ${acc.accountName}`}
-                        title={`${meta.label} · @${acc.accountName.replace(/^@/, '')}`}
-                        className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border border-white/10 bg-white/[0.03] text-gray-400 transition-colors ${meta.color}`}
-                      >
-                        {meta.icon}
-                      </a>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+              {meta.icon}
+              <span>{meta.label}</span>
+            </a>
           );
         })}
       </div>

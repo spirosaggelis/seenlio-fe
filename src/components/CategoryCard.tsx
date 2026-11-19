@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import CategoryIcon from "./CategoryIcon";
+import { scrubClosedRetailerClaims } from "@/lib/productSeo";
 
 interface CategoryCardProps {
   name: string;
@@ -90,7 +91,7 @@ export default function CategoryCard({
       {/* Description */}
       {description && (
         <p className="relative mt-1 text-xs text-gray-500 line-clamp-2">
-          {description}
+          {description ? scrubClosedRetailerClaims(description) : description}
         </p>
       )}
 

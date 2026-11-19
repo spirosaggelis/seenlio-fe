@@ -1,22 +1,14 @@
-import { getChannels } from '@/lib/strapi';
-
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
 
-/** Fallback if Strapi is down — public profile URLs only, no secrets. */
-const FALLBACK_SOCIAL_URLS = [
-  'https://www.youtube.com/@seenlio',
-  'https://www.youtube.com/@seenlio.kitchen',
-  'https://www.youtube.com/@seenlio.gadgets',
-  'https://www.youtube.com/@seenlioclean',
-  'https://www.pinterest.com/seenlio',
-  'https://www.instagram.com/seenlio.kitchen',
-  'https://www.instagram.com/seenlio.gadgets',
-  'https://www.instagram.com/seenlio.clean',
-  'https://www.facebook.com/seenlio.kitchen',
-  'https://www.facebook.com/seenlio.gadgets',
-  'https://www.facebook.com/seenlio.clean',
-];
+/** One Seenlio brand account per network. Niche channels are retired. */
+export const BRAND_ACCOUNTS = [
+  { platform: 'youtube', handle: '@seenlio', url: 'https://www.youtube.com/@seenlio' },
+  { platform: 'instagram', handle: 'seenlio_com', url: 'https://www.instagram.com/seenlio_com' },
+  { platform: 'facebook', handle: 'Seenlio', url: 'https://www.facebook.com/seenlio' },
+  { platform: 'pinterest', handle: 'seenlio', url: 'https://www.pinterest.com/seenlio' },
+  { platform: 'tiktok', handle: 'seenlio', url: 'https://www.tiktok.com/@seenlio' },
+] as const;
 
 export function socialProfileUrl(
   platform: string,
@@ -45,35 +37,7 @@ export function socialProfileUrl(
 }
 
 export async function getSocialProfileUrls(): Promise<string[]> {
-  try {
-    const res = await getChannels();
-    const urls = new Set<string>();
-    for (const raw of (res.data || []) as Array<{
-      isActive?: boolean;
-      platformAccounts?: Array<{
-        platform?: string;
-        accountName?: string;
-        accountId?: string;
-        isActive?: boolean;
-      }>;
-    }>) {
-      if (raw.isActive === false) continue;
-      for (const acc of raw.platformAccounts || []) {
-        if (acc.isActive === false) continue;
-        if (acc.platform === 'tiktok') continue;
-        const url = socialProfileUrl(
-          acc.platform || '',
-          acc.accountName || '',
-          acc.accountId,
-        );
-        if (url) urls.add(url);
-      }
-    }
-    if (urls.size > 0) return [...urls];
-  } catch {
-    // Strapi may be down locally
-  }
-  return FALLBACK_SOCIAL_URLS;
+  return BRAND_ACCOUNTS.map((account) => account.url);
 }
 
 export function organizationJsonLd(sameAs: string[]) {
@@ -84,7 +48,7 @@ export function organizationJsonLd(sameAs: string[]) {
     url: SITE_URL,
     logo: `${SITE_URL}/logo.png`,
     description:
-      'Seenlio is an editorial product-discovery site. We watch short-form video trends, match them to real Amazon, Temu, and AliExpress listings, and publish unique write-ups and round-ups. Shop links are affiliate.',
+      'Seenlio is an editorial product-discovery site. We watch short-form video trends, match them to real Amazon and AliExpress listings, and publish unique write-ups and round-ups. Shop links are affiliate. Checkout is on the retailer.',
     sameAs,
   };
 }

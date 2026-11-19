@@ -32,6 +32,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: '/go/:path*',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
+      {
         source: '/:path*(jpg|jpeg|gif|png|webp|avif|svg|ico)',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },

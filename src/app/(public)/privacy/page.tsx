@@ -112,7 +112,7 @@ export default function PrivacyPage() {
           <li>
             <strong>Affiliate Platforms:</strong> When you click an affiliate
             link, you are redirected to a third-party retailer (such as Amazon,
-            AliExpress, Temu, or TikTok Shop). These platforms have their own
+            AliExpress, or TikTok Shop). These platforms have their own
             privacy policies that govern data collected on their sites.
           </li>
         </ul>

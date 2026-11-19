@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getRollingPageViewCount } from '@/lib/bq/rollingPageViews';
 import { getTrendingProducts, getCategories, getProducts, getPublishedListicles, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
 import { resolveListingProducts } from "@/lib/affiliateListing";
@@ -10,6 +11,11 @@ import { getSocialProfileUrls, organizationJsonLd } from '@/lib/siteIdentity';
 
 /** Shop CTAs resolve geo on /go/[code]; page HTML can be cached. */
 export const revalidate = 300;
+
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+  openGraph: { url: '/' },
+};
 
 interface Category {
   id: number;

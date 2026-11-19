@@ -44,7 +44,6 @@ const PRICE_BUCKETS: Array<{ value: string; label: string }> = [
 const SOURCE_OPTIONS: Array<{ value: SourceKey; label: string }> = [
   { value: 'amazon', label: 'Amazon' },
   { value: 'aliexpress', label: 'AliExpress' },
-  { value: 'temu', label: 'Temu' },
 ];
 
 export default function ProductFilterBar({

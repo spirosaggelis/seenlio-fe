@@ -50,7 +50,7 @@ export default function TermsPage() {
         <h2>3. Affiliate Links and Third-Party Products</h2>
         <p>
           The Service contains affiliate links to third-party retailers
-          including, but not limited to, Amazon, AliExpress, Temu, and TikTok
+          including, but not limited to, Amazon, AliExpress, and TikTok
           Shop. When you click on these links and make a purchase, we may earn a
           commission at no additional cost to you.
         </p>
@@ -137,7 +137,7 @@ export default function TermsPage() {
             error-free, or free of harmful components.
           </li>
           <li>
-            Product information, including prices, ratings, and trend data, is
+            Product information, including prices, descriptions, and trend data, is
             provided for informational purposes only and may not be accurate or
             up to date.
           </li>

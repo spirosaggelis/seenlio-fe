@@ -2,6 +2,8 @@ import { shopPlatformLabel } from '@/lib/productSeo';
 
 export type FaqItem = { question: string; answer: string };
 
+export type StoredFaq = { question?: string; answer?: string };
+
 export function faqJsonLd(items: FaqItem[]) {
   return {
     '@context': 'https://schema.org',
@@ -14,34 +16,56 @@ export function faqJsonLd(items: FaqItem[]) {
   };
 }
 
+function buyAnswer(sourcePlatform: string | undefined, productCode: string): FaqItem {
+  const shop = shopPlatformLabel(sourcePlatform);
+  return {
+    question: 'Where can I buy it?',
+    answer: `Use the shop button on this page. It sends you to ${shop} through seenlio.com/go/${productCode}. Seenlio is an affiliate and may earn a commission at no extra cost to you. Checkout and stock are on the retailer.`,
+  };
+}
+
+function specificFaqs(stored: StoredFaq[] | undefined): FaqItem[] {
+  if (!stored?.length) return [];
+  const items: FaqItem[] = [];
+  for (const entry of stored) {
+    const question = entry.question?.trim();
+    const answer = entry.answer?.trim();
+    if (!question || !answer || answer.length < 20) continue;
+    items.push({ question, answer });
+  }
+  return items;
+}
+
+/**
+ * Visible FAQ plus whether it is specific enough for FAQPage JSON-LD.
+ * Rewritten products use their own questions, then the buy answer.
+ * Older products keep a short fallback and do not get FAQ schema when
+ * the only answers are the shared template.
+ */
 export function productFaqItems(input: {
   shortName: string;
   editorialIntro: string;
-  categoryName?: string;
   sourcePlatform?: string;
   productCode: string;
-}): FaqItem[] {
-  const shop = shopPlatformLabel(input.sourcePlatform);
-  const category = input.categoryName || 'home and lifestyle';
-  return [
-    {
-      question: `What is the ${input.shortName}?`,
-      answer: input.editorialIntro,
-    },
-    {
-      question: 'Who is this for?',
-      answer: `People browsing ${category} products that have been showing up in short videos and want a short, independent write-up before they click through to a retailer.`,
-    },
-    {
-      question: 'Where can I buy it?',
-      answer: `Use the shop button on this page. It sends you to ${shop} through seenlio.com/go/${input.productCode}. Seenlio is an affiliate and may earn a commission at no extra cost to you.`,
-    },
-    {
-      question: 'Does Seenlio keep stock?',
-      answer:
-        'No. We do not sell the item or track live inventory. Check the retailer listing for price, shipping, and availability before you buy.',
-    },
-  ];
+  storedFaq?: StoredFaq[];
+}): { items: FaqItem[]; emitJsonLd: boolean } {
+  const buy = buyAnswer(input.sourcePlatform, input.productCode);
+  const stored = specificFaqs(input.storedFaq);
+  if (stored.length > 0) {
+    return { items: [...stored, buy], emitJsonLd: true };
+  }
+
+  const intro = input.editorialIntro.trim();
+  return {
+    items: [
+      {
+        question: `What is the ${input.shortName}?`,
+        answer: intro,
+      },
+      buy,
+    ],
+    emitJsonLd: intro.length >= 160,
+  };
 }
 
 export function listicleFaqItems(input: {
@@ -87,7 +111,7 @@ export function aboutFaqItems(): FaqItem[] {
     {
       question: 'How do you choose products?',
       answer:
-        'A pipeline watches Amazon, Temu, and AliExpress listings that match viral clips, then a human-reviewed publish step puts them on the site. Each public product page gets Seenlio-written title and intro copy. We do not take payment for inclusion.',
+        'A pipeline watches Amazon (US, DE, and UK) and AliExpress listings that match viral clips, then a human-reviewed publish step puts them on the site. Each public product page gets Seenlio-written title and intro copy. We do not take payment for inclusion.',
     },
     {
       question: 'Do you earn money from the shop buttons?',
@@ -97,7 +121,7 @@ export function aboutFaqItems(): FaqItem[] {
     {
       question: 'Can I buy directly on Seenlio?',
       answer:
-        'No. Checkout happens on Amazon, Temu, AliExpress, or another retailer. Always read that listing for shipping, returns, and stock.',
+        'No. Checkout happens on Amazon or AliExpress. Always read that listing for shipping, returns, and stock.',
     },
   ];
 }

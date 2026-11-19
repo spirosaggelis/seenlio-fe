@@ -27,7 +27,7 @@ export function hasTemuToLink(product: TemuProductInput): boolean {
   );
 }
 
-/** Temu listings without a temu.to link stay off the site until the account is tracking again. */
+/** The Temu affiliate account is closed. Listings without a temu.to link stay off the site. */
 export function isHiddenTemuProduct(product: TemuProductInput): boolean {
   return (product.sourcePlatform || '').toLowerCase() === 'temu' && !hasTemuToLink(product);
 }

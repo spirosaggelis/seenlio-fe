@@ -14,6 +14,7 @@ import {
   SORT_MAP,
   type SourceKey,
 } from '@/lib/listingQuery';
+import { collectionPageJsonLd, displayName } from '@/lib/productSeo';
 
 /** Shop CTAs resolve geo on /go/[code]; page HTML can be cached. */
 export const revalidate = 300;
@@ -66,6 +67,7 @@ export async function generateMetadata({
     title,
     description: LISTING_DESCRIPTION,
     alternates: { canonical },
+    ...(query ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       title,
       description: LISTING_DESCRIPTION,
@@ -191,6 +193,20 @@ export default async function ProductsPage({
   }
 
   const { pageCount, total } = pagination;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
+  const listingLd = collectionPageJsonLd({
+    siteUrl,
+    path: query ? '/products' : page > 1 ? `/products?page=${page}` : '/products',
+    name: query ? 'Products' : page > 1 ? `All Products — Page ${page}` : 'All Products',
+    crumbs: [
+      { name: 'Home', path: '/' },
+      { name: 'Products', path: '/products' },
+    ],
+    items: products.map((product) => ({
+      name: displayName(product.name),
+      path: `/products/${product.slug}`,
+    })),
+  });
 
   const buildHref = (p: number) =>
     listingHref('/products', {
@@ -204,6 +220,10 @@ export default async function ProductsPage({
 
   return (
     <div className='bg-[#0a0a0f]'>
+      <script
+        type='application/ld+json'
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(listingLd) }}
+      />
       <div className='mx-auto max-w-7xl px-4 pt-16 pb-8'>
         {/* Page header */}
         <div className='mb-5 sm:mb-4'>

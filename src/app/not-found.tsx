@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: '404 — Lost in the Void | Seenlio',
   description:
     'This page has gone viral… in the wrong direction. Let us help you find what you were looking for.',
+  robots: { index: false, follow: false },
 };
 
 export default function NotFound() {

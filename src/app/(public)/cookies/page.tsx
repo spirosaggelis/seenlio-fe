@@ -143,8 +143,8 @@ export default function CookiePolicyPage() {
           set their own cookies on your device. These cookies are governed by
           the respective retailer&apos;s privacy and cookie policies and are
           outside our control. Please refer to the privacy policies of{' '}
-          <strong>Amazon</strong>, <strong>AliExpress</strong>,{' '}
-          <strong>Temu</strong>, and <strong>TikTok Shop</strong> for more
+          <strong>Amazon</strong>, <strong>AliExpress</strong>, and{' '}
+          <strong>TikTok Shop</strong> for more
           information.
         </p>
       </section>

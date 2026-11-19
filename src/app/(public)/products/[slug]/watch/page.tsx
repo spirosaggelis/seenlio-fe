@@ -27,12 +27,12 @@ type PageProps = {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const product = (await getProduct(slug)) as ProductData | null;
-  if (!product) return { title: 'Video Not Found' };
+  if (!product) notFound();
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
   const watchUrl = `${siteUrl}/products/${product.slug}/watch`;
   const video = pickProductVideo(product.videos);
-  if (!video) return { title: 'Video Not Found' };
+  if (!video) notFound();
 
   const title = video.title || product.name;
   const description =
