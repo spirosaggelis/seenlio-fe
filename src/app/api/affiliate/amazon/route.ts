@@ -6,6 +6,7 @@ import {
 import { getVisitorCountry } from '@/lib/affiliateDestination';
 import type { AffiliatePattern } from '@/lib/affiliateTypes';
 import { parseOutboundTraffic } from '@/lib/outboundTracking';
+import { isCrawler } from '@/lib/requestAgents';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +40,13 @@ export async function GET(request: NextRequest) {
     s: searchParams.get('s'),
     ch: searchParams.get('ch'),
   });
+
+  if (isCrawler(request.headers.get('user-agent'))) {
+    const preview = request.nextUrl.clone();
+    preview.pathname = productCode ? `/go/${encodeURIComponent(productCode)}` : '/products';
+    preview.search = '';
+    return NextResponse.redirect(preview, { status: 302 });
+  }
 
   if (!/^[A-Z0-9]{10}$/.test(asin)) {
     return NextResponse.redirect(

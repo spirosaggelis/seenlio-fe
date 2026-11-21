@@ -69,6 +69,7 @@ export function pushToDataLayer(event: DataLayerEvent): void {
 /** Push a gtag consent update — this is what GTM reads for Consent Mode v2 */
 export function updateGtagConsent(prefs: ConsentPreferences): void {
   if (typeof window === 'undefined') return;
+  if (isUntrackedAgent(window.navigator.userAgent)) return;
   window.dataLayer = window.dataLayer || [];
    
   function gtag(...args: unknown[]) {
