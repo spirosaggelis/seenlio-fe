@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
+import GoPreview from './GoPreview';
 import GoRedirectClient from './GoRedirectClient';
 import GtmSnippet from '@/components/GtmSnippet';
 import { CURRENCY_SYMBOL } from '@/lib/amazonRouting';
@@ -11,11 +12,7 @@ import {
   type AffiliateProductInput,
 } from '@/lib/affiliateDestination';
 import { parseOutboundTraffic } from '@/lib/outboundTracking';
-import { isInAppBrowser, isUntrackedAgent, shouldSkipSplash } from '@/lib/requestAgents';
-
-export const metadata: Metadata = {
-  robots: { index: false, follow: false },
-};
+import { isCrawler, isInAppBrowser } from '@/lib/requestAgents';
 
 /** Short links resolve affiliate URLs per visitor (Amazon geo, Temu links). */
 export const dynamic = 'force-dynamic';
@@ -41,6 +38,7 @@ interface MediaItem {
 interface Product extends AffiliateProductInput {
   id: number;
   name?: string;
+  slug?: string;
   media?: MediaItem[];
   pricePoints?: PricePoint[];
 }
@@ -58,6 +56,7 @@ async function lookupProduct(code: string): Promise<Product | null> {
       `fields[2]=sourceUrl`,
       `fields[3]=sourcePlatform`,
       `fields[4]=name`,
+      `fields[5]=slug`,
     ].join('&');
     const res = await fetch(`${STRAPI_URL}/api/products?${params}`, {
       headers: STRAPI_TOKEN ? { Authorization: `Bearer ${STRAPI_TOKEN}` } : {},
@@ -92,6 +91,48 @@ async function getAffiliatePatterns(): Promise<AffiliatePattern[]> {
   return [];
 }
 
+function primaryImageOf(product: Product): string | null {
+  return (
+    product.media?.find((m) => m.isPrimary && m.type !== 'video')?.url ||
+    product.media?.find((m) => m.type !== 'video')?.url ||
+    null
+  );
+}
+
+function priceTextOf(product: Product): string | null {
+  const price = product.pricePoints?.[0] || null;
+  if (price?.price == null) return null;
+  const storedCurrency = (price.currency || 'USD').toUpperCase();
+  const symbol = CURRENCY_SYMBOL[storedCurrency] || `${storedCurrency} `;
+  return `${symbol}${price.price.toFixed(2)}`;
+}
+
+function productHrefOf(product: Product, productCode: string): string {
+  if (product.slug) return `/products/${encodeURIComponent(product.slug)}`;
+  return `/products?search=${encodeURIComponent(productCode)}`;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}): Promise<Metadata> {
+  const { code } = await params;
+  const product = await lookupProduct(code.toUpperCase());
+  const title = product?.name || 'Seenlio';
+  const image = product ? primaryImageOf(product) : null;
+  return {
+    title,
+    description: product?.name ? `${product.name} on Seenlio` : 'Seenlio',
+    robots: { index: false, follow: false },
+    openGraph: {
+      title,
+      description: product?.name ? `${product.name} on Seenlio` : 'Seenlio',
+      images: image ? [{ url: image }] : [{ url: '/logo.png' }],
+    },
+  };
+}
+
 export default async function GoPage({
   params,
   searchParams,
@@ -104,19 +145,34 @@ export default async function GoPage({
 
   const reqHeaders = await headers();
 
-  const [product, patterns] = await Promise.all([
-    lookupProduct(productCode),
-    getAffiliatePatterns(),
-  ]);
+  const product = await lookupProduct(productCode);
 
   if (!product) {
     redirect(`/products?search=${encodeURIComponent(productCode)}`);
   }
 
+  const userAgent = reqHeaders.get('user-agent');
+  const primaryImage = primaryImageOf(product);
+  const priceText = priceTextOf(product);
+
+  if (isCrawler(userAgent)) {
+    console.log(
+      `[go] crawler product=${product.productCode} platform=${product.sourcePlatform || '-'}`,
+    );
+    return (
+      <GoPreview
+        productName={product.name}
+        productCode={product.productCode}
+        productImage={primaryImage}
+        priceText={priceText}
+        productHref={productHrefOf(product, productCode)}
+      />
+    );
+  }
+
   const country = getVisitorCountry(reqHeaders, sp['country']);
   const traffic = parseOutboundTraffic({ s: sp.s, ch: sp.ch });
-  const userAgent = reqHeaders.get('user-agent');
-
+  const patterns = await getAffiliatePatterns();
   const destination = await resolveAffiliateDestination(product, patterns, country, {
     traffic,
   });
@@ -124,22 +180,6 @@ export default async function GoPage({
   console.log(
     `[go] product=${product.productCode} platform=${product.sourcePlatform} country=${country} store=${destination.store} source=${traffic.source || '-'}`,
   );
-
-  if (destination.url && (isUntrackedAgent(userAgent) || (shouldSkipSplash(userAgent) && !isInAppBrowser(userAgent)))) {
-    redirect(destination.url);
-  }
-
-  const primaryImage =
-    product.media?.find((m) => m.isPrimary && m.type !== 'video')?.url ||
-    product.media?.find((m) => m.type !== 'video')?.url ||
-    null;
-
-  const price = product.pricePoints?.[0] || null;
-  const storedCurrency = (price?.currency || 'USD').toUpperCase();
-  const priceText =
-    price?.price != null
-      ? `${CURRENCY_SYMBOL[storedCurrency] || `${storedCurrency} `}${price.price.toFixed(2)}`
-      : null;
 
   return (
     <>

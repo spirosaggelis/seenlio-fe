@@ -6,6 +6,7 @@ import {
 } from '@/lib/affiliateDestination';
 import type { AffiliatePattern } from '@/lib/affiliateTypes';
 import { parseOutboundTraffic } from '@/lib/outboundTracking';
+import { isCrawler } from '@/lib/requestAgents';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,6 +63,10 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code')?.trim().toUpperCase();
   if (!code) {
     return NextResponse.json({ error: 'code required' }, { status: 400 });
+  }
+
+  if (isCrawler(request.headers.get('user-agent'))) {
+    return NextResponse.json({ url: `/go/${encodeURIComponent(code)}` });
   }
 
   const countryOverride = request.nextUrl.searchParams.get('country');
