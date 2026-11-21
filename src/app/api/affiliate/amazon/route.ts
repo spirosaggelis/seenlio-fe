@@ -7,6 +7,7 @@ import { getVisitorCountry } from '@/lib/affiliateDestination';
 import type { AffiliatePattern } from '@/lib/affiliateTypes';
 import { parseOutboundTraffic } from '@/lib/outboundTracking';
 import { isCrawler } from '@/lib/requestAgents';
+import { SITE_URL } from '@/lib/siteIdentity';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,10 +43,8 @@ export async function GET(request: NextRequest) {
   });
 
   if (isCrawler(request.headers.get('user-agent'))) {
-    const preview = request.nextUrl.clone();
-    preview.pathname = productCode ? `/go/${encodeURIComponent(productCode)}` : '/products';
-    preview.search = '';
-    return NextResponse.redirect(preview, { status: 302 });
+    const path = productCode ? `/go/${encodeURIComponent(productCode)}` : '/products';
+    return NextResponse.redirect(new URL(path, SITE_URL), { status: 302 });
   }
 
   if (!/^[A-Z0-9]{10}$/.test(asin)) {
