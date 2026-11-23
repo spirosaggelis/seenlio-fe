@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
+import { CDN_HOST, CDN_ROBOTS_TXT, cdnDecision, isCdnImagePath, requestHostname } from '@/lib/cdnHost';
 
 const DASHBOARD_JWT_SECRET = process.env.DASHBOARD_JWT_SECRET ?? 'change-me-in-production';
 
@@ -24,7 +25,25 @@ async function isDashboardAuthed(req: NextRequest): Promise<boolean> {
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 export async function middleware(req: NextRequest): Promise<NextResponse> {
-  const { pathname } = req.nextUrl;
+  const { pathname, search } = req.nextUrl;
+  const host = requestHostname(req.headers.get('x-forwarded-host'), req.headers.get('host'));
+  const cdn = cdnDecision(host, pathname, search);
+
+  if (cdn.kind === 'robots') {
+    return new NextResponse(CDN_ROBOTS_TXT, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600',
+        'X-Robots-Tag': 'noindex',
+      },
+    });
+  }
+
+  if (cdn.kind === 'redirect') {
+    const res = NextResponse.redirect(cdn.location, 301);
+    res.headers.set('X-Robots-Tag', 'noindex');
+    return res;
+  }
 
   const indexNowKey = process.env.INDEXNOW_KEY?.trim();
   if (indexNowKey && pathname === `/${indexNowKey}.txt`) {
@@ -59,11 +78,15 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  return NextResponse.next({ request: { headers: requestHeaders } });
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
+  if (host === CDN_HOST && !isCdnImagePath(pathname)) {
+    res.headers.set('X-Robots-Tag', 'noindex');
+  }
+  return res;
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

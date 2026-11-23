@@ -40,7 +40,7 @@ Seenlio is not a store. We do not hold stock.
 - [Products](${SITE_URL}/products): one product per page, with a Seenlio write-up and a shop button
 - [Trending](${SITE_URL}/trending): highest trend-score products from the last 30 days
 - [Catalog index](${SITE_URL}/llms-full.txt): categories plus a short list of current products
-- [Sitemap](${SITE_URL}/sitemap.xml): every published product, category, and round-up
+- [Sitemap](${SITE_URL}/sitemap.xml): indexable products, categories, and round-ups
 
 ## Categories
 

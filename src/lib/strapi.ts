@@ -289,6 +289,29 @@ export const PUBLISHED_LISTICLE_FILTER = {
   listicleStatus: { $eq: 'published' },
 } as const;
 
+export async function getGuideLinks() {
+  const out: Array<{ title: string; slug: string }> = [];
+  let page = 1;
+  while (page <= 20) {
+    const res = await fetchStrapi<unknown[]>('/listicles', {
+      filters: { ...PUBLISHED_LISTICLE_FILTER },
+      sort: ['publishedOn:desc', 'priorityScore:desc'],
+      pagination: { page, pageSize: 100 },
+      fields: ['title', 'slug'],
+    });
+    const batch = Array.isArray(res.data) ? (res.data as Array<Record<string, unknown>>) : [];
+    for (const row of batch) {
+      if (typeof row.slug === 'string' && typeof row.title === 'string') {
+        out.push({ title: row.title, slug: row.slug });
+      }
+    }
+    const pageCount = res.meta?.pagination?.pageCount ?? 1;
+    if (page >= pageCount || batch.length === 0) break;
+    page += 1;
+  }
+  return out;
+}
+
 export async function getPublishedListicles(options: FetchOptions = {}) {
   const res = await fetchStrapi<unknown[]>('/listicles', {
     filters: { ...PUBLISHED_LISTICLE_FILTER },

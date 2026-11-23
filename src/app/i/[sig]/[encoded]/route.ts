@@ -11,6 +11,16 @@ const FETCH_UA =
 
 type Params = { sig: string; encoded: string };
 
+function textError(body: string, status: number) {
+  return new NextResponse(body, {
+    status,
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'X-Robots-Tag': 'noindex',
+    },
+  });
+}
+
 export async function GET(
   _request: Request,
   context: { params: Params | Promise<Params> },
@@ -18,7 +28,7 @@ export async function GET(
   const { sig, encoded } = await Promise.resolve(context.params);
 
   if (!verify(encoded, sig)) {
-    return new NextResponse('Forbidden', { status: 403 });
+    return textError('Forbidden', 403);
   }
 
   const dot = encoded.lastIndexOf('.');
@@ -28,21 +38,21 @@ export async function GET(
   try {
     upstreamUrl = base64UrlDecode(b64);
   } catch {
-    return new NextResponse('Bad request', { status: 400 });
+    return textError('Bad request', 400);
   }
 
   let parsed: URL;
   try {
     parsed = new URL(upstreamUrl);
   } catch {
-    return new NextResponse('Bad request', { status: 400 });
+    return textError('Bad request', 400);
   }
 
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-    return new NextResponse('Bad request', { status: 400 });
+    return textError('Bad request', 400);
   }
   if (!isAllowedImageHost(parsed.hostname)) {
-    return new NextResponse('Host not allowed', { status: 400 });
+    return textError('Host not allowed', 400);
   }
 
   const controller = new AbortController();
@@ -57,17 +67,17 @@ export async function GET(
     });
   } catch {
     clearTimeout(timeout);
-    return new NextResponse('Upstream fetch failed', { status: 502 });
+    return textError('Upstream fetch failed', 502);
   }
   clearTimeout(timeout);
 
   if (!upstream.ok || !upstream.body) {
-    return new NextResponse('Upstream error', { status: 502 });
+    return textError('Upstream error', 502);
   }
 
   const contentType = upstream.headers.get('content-type') ?? '';
   if (!contentType.toLowerCase().startsWith('image/')) {
-    return new NextResponse('Not an image', { status: 502 });
+    return textError('Not an image', 502);
   }
 
   const headers = new Headers();

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { getRollingPageViewCount } from '@/lib/bq/rollingPageViews';
-import { getTrendingProducts, getCategories, getProducts, getPublishedListicles, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
+import { getTrendingProducts, getCategories, getProducts, getPublishedListicles, getGuideLinks, PUBLISHED_PRODUCT_FILTER } from "@/lib/strapi";
 import { resolveListingProducts } from "@/lib/affiliateListing";
 import HeroSection from "@/components/HeroSection";
 import SectionHeader from "@/components/SectionHeader";
@@ -16,6 +17,12 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
   openGraph: { url: '/' },
 };
+
+const FOCUS_CATEGORIES = [
+  { slug: 'kitchen-tools', name: 'Kitchen Tools' },
+  { slug: 'cleaning-organization', name: 'Cleaning & Organization' },
+  { slug: 'car-accessories', name: 'Car Accessories' },
+] as const;
 
 interface Category {
   id: number;
@@ -62,11 +69,12 @@ export default async function HomePage() {
   let categories: Category[] = [];
   let recent: Product[] = [];
   let listicles: ListicleCardData[] = [];
+  let guides: Array<{ title: string; slug: string }> = [];
   let productCount = 0;
   let pageViews = 0;
 
   try {
-    const [trendingData, categoryData, recentData, productCountData, pageViewCount, listicleData] = await Promise.all([
+    const [trendingData, categoryData, recentData, productCountData, pageViewCount, listicleData, guideData] = await Promise.all([
       getTrendingProducts(),
       getCategories({ pagination: { pageSize: 10 } }),
       getProducts({
@@ -81,6 +89,7 @@ export default async function HomePage() {
       }),
       getRollingPageViewCount(365),
       getPublishedListicles({ pagination: { pageSize: 3 } }),
+      getGuideLinks(),
     ]);
     trending = await resolveListingProducts(
       (trendingData || []) as Product[],
@@ -92,6 +101,7 @@ export default async function HomePage() {
     productCount = productCountData.meta?.pagination?.total ?? 0;
     pageViews = pageViewCount;
     listicles = (listicleData || []) as ListicleCardData[];
+    guides = guideData;
   } catch {
     // Strapi / BigQuery may not be configured locally
   }
@@ -171,6 +181,29 @@ export default async function HomePage() {
           )}
         </section>
 
+        <section>
+          <SectionHeader
+            title="Start here"
+            subtitle="The three categories we cover in the most depth"
+          />
+          <div className="grid gap-4 sm:grid-cols-3">
+            {FOCUS_CATEGORIES.map((focus) => {
+              const match = categories.find((cat) => cat.slug === focus.slug);
+              const name = match?.name || focus.name;
+              return (
+                <Link
+                  key={focus.slug}
+                  href={`/categories/${focus.slug}`}
+                  className="rounded-xl border border-white/10 bg-white/[0.03] px-5 py-4 transition-colors hover:border-purple-500/40"
+                >
+                  <p className="text-lg font-semibold text-white">{name}</p>
+                  <p className="mt-1 text-sm text-purple-300">Browse {name}</p>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
         {/* Browse Categories */}
         {categories.length > 0 && (
           <section>
@@ -204,6 +237,28 @@ export default async function HomePage() {
                 </div>
               ))}
             </div>
+          </section>
+        )}
+
+        {guides.length > 0 && (
+          <section>
+            <SectionHeader
+              title="Guides"
+              subtitle="Every buying guide on Seenlio"
+              viewAllHref="/lists"
+            />
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {guides.map((guide) => (
+                <li key={guide.slug}>
+                  <Link
+                    href={`/lists/${guide.slug}`}
+                    className="block rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3 font-medium text-white transition-colors hover:border-purple-500/40"
+                  >
+                    {guide.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 

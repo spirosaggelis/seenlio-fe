@@ -3,7 +3,7 @@ import {
   SITE_URL,
   SITEMAP_XML_HEADERS,
   fetchListiclesMaxLastmod,
-  fetchProductsMaxUpdatedAt,
+  fetchProductsMaxContentLastmod,
   fetchSiteContentMaxLastmod,
   lastmodXml,
 } from '@/lib/sitemap';
@@ -14,7 +14,7 @@ const LOOKUP_LASTMOD = '2026-08-23T00:00:00.000Z';
 export async function GET() {
   const [siteLastmod, productsLastmod, listiclesLastmod] = await Promise.all([
     fetchSiteContentMaxLastmod(),
-    fetchProductsMaxUpdatedAt(),
+    fetchProductsMaxContentLastmod(),
     fetchListiclesMaxLastmod(),
   ]);
 

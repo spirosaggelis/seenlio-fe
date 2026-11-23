@@ -63,6 +63,7 @@ interface FullListicle {
   publishedOn?: string;
   generatedAt?: string;
   updatedAt?: string;
+  contentUpdatedAt?: string | null;
   items?: ListicleItem[];
   products?: ListicleProduct[];
   featuredImage?: { url?: string };
@@ -220,7 +221,7 @@ export default async function ListiclePage({ params }: PageProps) {
 
   const publishedIso = listicle.publishedOn || listicle.generatedAt;
   const modifiedIso =
-    editorialLastmod(publishedIso, listicle.updatedAt, listicle.generatedAt) || publishedIso;
+    editorialLastmod(publishedIso, listicle.contentUpdatedAt) || publishedIso;
 
   // 1. ItemList — tells Google this is a ranked round-up
   const ldItemList = {

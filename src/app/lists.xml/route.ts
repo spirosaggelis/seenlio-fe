@@ -2,18 +2,16 @@ import { NextResponse } from 'next/server';
 import {
   SITE_URL,
   SITEMAP_XML_HEADERS,
-  strapiHeaders,
+  strapiFetch,
   unwrapRow,
   editorialLastmod,
-  SITEMAP_REVALIDATE,
 } from '@/lib/sitemap';
-
-const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
 
 interface ListicleRow {
   slug?: string;
   publishedOn?: string;
-  updatedAt?: string;
+  createdAt?: string;
+  contentUpdatedAt?: string | null;
   priorityScore?: number;
 }
 
@@ -24,23 +22,18 @@ export async function GET() {
     const params = new URLSearchParams({
       'fields[0]': 'slug',
       'fields[1]': 'publishedOn',
-      'fields[2]': 'updatedAt',
+      'fields[2]': 'createdAt',
+      'fields[4]': 'contentUpdatedAt',
       'fields[3]': 'priorityScore',
       'filters[listicleStatus][$eq]': 'published',
       'pagination[pageSize]': '200',
       'sort[0]': 'publishedOn:desc',
     });
 
-    const res = await fetch(`${STRAPI_URL}/api/listicles?${params.toString()}`, {
-      headers: strapiHeaders(),
-      next: { revalidate: SITEMAP_REVALIDATE },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      for (const row of data.data || []) {
-        const attrs = unwrapRow<ListicleRow>(row);
-        if (attrs.slug) entries.push(attrs);
-      }
+    const data = await strapiFetch('/listicles', params);
+    for (const row of data.data || []) {
+      const attrs = unwrapRow<ListicleRow>(row);
+      if (attrs.slug) entries.push(attrs);
     }
   } catch {
     /* suppress */
@@ -48,7 +41,7 @@ export async function GET() {
 
   const urls = entries
     .map((e) => {
-      const lastmod = editorialLastmod(e.publishedOn, e.updatedAt);
+      const lastmod = editorialLastmod(e.publishedOn, e.contentUpdatedAt, e.createdAt);
       const priority = Math.min(
         0.9,
         Math.max(0.5, 0.5 + ((e.priorityScore || 0) / 100) * 0.4),

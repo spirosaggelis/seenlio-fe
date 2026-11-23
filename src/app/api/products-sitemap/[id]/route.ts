@@ -8,17 +8,17 @@ import {
   type PublishRecord,
   type VideoItem,
 } from '@/lib/productVideo';
+import { isProductIndexable } from '@/lib/indexing';
 import {
   SITE_URL,
   SITEMAP_XML_HEADERS,
-  strapiHeaders,
+  appendVisibleProductFilters,
+  strapiFetch,
   unwrapRow,
   toLastmod,
+  contentLastmod,
   lastmodXml,
-  SITEMAP_REVALIDATE,
 } from '@/lib/sitemap';
-
-const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
 
 const MAX_IMAGES_PER_URL = 5;
 
@@ -77,26 +77,30 @@ interface SitemapProduct {
   name?: string;
   shortDescription?: string;
   description?: string;
-  updatedAt?: string;
+  seoReady?: boolean | null;
+  contentUpdatedAt?: string | null;
+  sitePublishedAt?: string | null;
+  createdAt?: string | null;
+  seo?: { structuredData?: { editorialIntro?: string | null } | null };
   media?: SitemapMedia[];
   videos?: unknown;
 }
 
-function productSitemapQuery(page: number, startDate: string, endDate: string): string {
+function productSitemapQuery(page: number, startDate: string, endDate: string): URLSearchParams {
   const params = new URLSearchParams({
     'fields[0]': 'slug',
-    'fields[1]': 'updatedAt',
-    'fields[2]': 'name',
-    'fields[3]': 'shortDescription',
-    'fields[4]': 'description',
+    'fields[1]': 'contentUpdatedAt',
+    'fields[2]': 'sitePublishedAt',
+    'fields[3]': 'createdAt',
+    'fields[4]': 'seoReady',
+    'fields[5]': 'name',
+    'fields[6]': 'shortDescription',
+    'fields[7]': 'description',
     'pagination[pageSize]': '100',
     'pagination[page]': String(page),
-    'filters[productStatus][$eq]': 'published',
-    'filters[$or][0][sourcePlatform][$null]': 'true',
-    'filters[$or][1][sourcePlatform][$ne]': 'temu',
-    'filters[$or][2][affiliateLinks][url][$contains]': 'temu.to',
     'filters[createdAt][$gte]': startDate,
     'filters[createdAt][$lte]': endDate,
+    'populate[seo][fields][0]': 'structuredData',
     'populate[media][fields][0]': 'url',
     'populate[media][fields][1]': 'type',
     'populate[media][fields][2]': 'isPrimary',
@@ -108,7 +112,8 @@ function productSitemapQuery(page: number, startDate: string, endDate: string): 
     'populate[videos][populate][publishRecords][fields][2]': 'externalUrl',
     'populate[videos][populate][publishRecords][fields][3]': 'publishedAt',
   });
-  return params.toString();
+  appendVisibleProductFilters(params);
+  return params;
 }
 
 export async function GET(request: Request, context: { params: { id: string } | Promise<{ id: string }> }) {
@@ -132,19 +137,15 @@ export async function GET(request: Request, context: { params: { id: string } | 
     let page = 1;
     let hasMore = true;
 
-    const headers = strapiHeaders();
-
     while (hasMore) {
-      const productsRes = await fetch(
-        `${STRAPI_URL}/api/products?${productSitemapQuery(page, startDate, endDate)}`,
-        { headers, next: { revalidate: SITEMAP_REVALIDATE } },
+      const productsData = await strapiFetch(
+        '/products',
+        productSitemapQuery(page, startDate, endDate),
       );
-
-      if (!productsRes.ok) break;
-
-      const productsData = await productsRes.json();
+      if (!productsData.data) break;
       for (const row of productsData.data || []) {
         const product = unwrapRow<SitemapProduct>(row);
+        if (!product.slug || !isProductIndexable(product)) continue;
         const images = (product.media || [])
           .filter((m) => m.type !== 'video' && m.url)
           .sort((a, b) => Number(!!b.isPrimary) - Number(!!a.isPrimary))
@@ -173,13 +174,13 @@ export async function GET(request: Request, context: { params: { id: string } | 
 
         urls += `
   <url>
-    <loc>${SITE_URL}/products/${product.slug}</loc>${lastmodXml(toLastmod(product.updatedAt))}
+    <loc>${SITE_URL}/products/${product.slug}</loc>${lastmodXml(contentLastmod(product))}
     <priority>0.8</priority>${imageBlocks}${videoBlock}
   </url>`;
       }
 
       const pagination = productsData?.meta?.pagination;
-      if (pagination && page < pagination.pageCount) {
+      if (pagination?.pageCount && page < pagination.pageCount) {
         page++;
       } else {
         hasMore = false;
