@@ -2,21 +2,31 @@ import { NextResponse } from 'next/server';
 import {
   SITE_URL,
   SITEMAP_XML_HEADERS,
-  fetchCategoriesMaxUpdatedAt,
+  fetchCategorySitemapEntries,
   fetchListiclesMaxLastmod,
-  fetchProductsMaxUpdatedAt,
+  fetchProductMonthBuckets,
   fetchSiteContentMaxLastmod,
   lastmodXml,
+  latestIso,
 } from '@/lib/sitemap';
 
 export async function GET() {
-  const [pagesLastmod, categoriesLastmod, productsLastmod, listsLastmod] =
-    await Promise.all([
-      fetchSiteContentMaxLastmod(),
-      fetchCategoriesMaxUpdatedAt(),
-      fetchProductsMaxUpdatedAt(),
-      fetchListiclesMaxLastmod(),
-    ]);
+  const [pagesLastmod, categories, buckets, listsLastmod] = await Promise.all([
+    fetchSiteContentMaxLastmod(),
+    fetchCategorySitemapEntries(),
+    fetchProductMonthBuckets(),
+    fetchListiclesMaxLastmod(),
+  ]);
+  const categoriesLastmod = latestIso(...categories.map((cat) => cat.lastmod));
+
+  const productNodes = buckets
+    .map(
+      ({ id, lastmod }) => `
+  <sitemap>
+    <loc>${SITE_URL}/products_${id}.xml</loc>${lastmodXml(lastmod)}
+  </sitemap>`,
+    )
+    .join('');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -27,11 +37,8 @@ export async function GET() {
     <loc>${SITE_URL}/categories.xml</loc>${lastmodXml(categoriesLastmod)}
   </sitemap>
   <sitemap>
-    <loc>${SITE_URL}/products.xml</loc>${lastmodXml(productsLastmod)}
-  </sitemap>
-  <sitemap>
     <loc>${SITE_URL}/lists.xml</loc>${lastmodXml(listsLastmod)}
-  </sitemap>
+  </sitemap>${productNodes}
 </sitemapindex>`;
 
   return new NextResponse(xml, { headers: SITEMAP_XML_HEADERS });

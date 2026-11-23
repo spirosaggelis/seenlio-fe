@@ -216,7 +216,8 @@ export function offerValidUntil(days = 30): string {
 
 /**
  * Offer for the product page. The amount is the stored listing price in its
- * own currency. No availability: we do not know retailer stock.
+ * own currency. Availability is InStock: the page only exists for a product
+ * we can link out to buy. No ratings.
  */
 export function productOfferJsonLd(input: {
   price?: number | null;
@@ -231,6 +232,7 @@ export function productOfferJsonLd(input: {
     price: input.price,
     priceCurrency: currency,
     priceValidUntil: offerValidUntil(30),
+    availability: 'https://schema.org/InStock',
   };
 }
 

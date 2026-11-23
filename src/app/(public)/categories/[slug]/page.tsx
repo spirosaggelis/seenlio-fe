@@ -167,7 +167,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
       sort: SORT_MAP[sortKey],
       pagination: { page, pageSize: CATEGORY_PAGE_SIZE },
     }),
-    getListiclesForCategory(slug).catch(() => []),
+    getListiclesForCategory(slug, 24).catch(() => []),
   ]);
   if (!category) notFound();
 
@@ -267,6 +267,20 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
             </div>
           </div>
 
+          {listicles.length > 0 && (
+            <HubLinks
+              className="mt-8"
+              title={`Guides for ${category.name}`}
+              items={(listicles as Array<{ title?: string; slug?: string; angleHook?: string }>)
+                .filter((l) => l.slug && l.title)
+                .map((l) => ({
+                  href: `/lists/${l.slug}`,
+                  label: String(l.title),
+                  hint: l.angleHook,
+                }))}
+            />
+          )}
+
           {/* Product count */}
           <div className="mt-6 flex items-center gap-3">
             <span className="text-sm text-gray-500">
@@ -290,20 +304,6 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
           hideCategory
           defaultSort={DEFAULT_SORT}
         />
-        {page === 1 && listicles.length > 0 && (
-          <div className="mb-12">
-            <HubLinks
-              title="Round-ups in this category"
-              items={(listicles as Array<{ title?: string; slug?: string; angleHook?: string }>)
-                .filter((l) => l.slug && l.title)
-                .map((l) => ({
-                  href: `/lists/${l.slug}`,
-                  label: String(l.title),
-                  hint: l.angleHook,
-                }))}
-            />
-          </div>
-        )}
         <ProductGrid
           isEmpty={products.length === 0}
           emptyMessage={

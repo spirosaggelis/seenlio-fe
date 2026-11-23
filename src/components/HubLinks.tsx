@@ -9,14 +9,16 @@ export type HubLink = {
 export default function HubLinks({
   title,
   items,
+  className = 'mt-16',
 }: {
   title: string;
   items: HubLink[];
+  className?: string;
 }) {
   if (items.length === 0) return null;
 
   return (
-    <section className="mt-16">
+    <section className={className}>
       <h2 className="text-lg font-semibold text-white mb-4">{title}</h2>
       <ul className="grid gap-3 sm:grid-cols-2">
         {items.map((item) => (

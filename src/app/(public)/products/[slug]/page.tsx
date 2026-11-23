@@ -34,6 +34,7 @@ import AffiliateDisclosure from "@/components/AffiliateDisclosure";
 import EditorialFaq from "@/components/EditorialFaq";
 import HubLinks from "@/components/HubLinks";
 import { faqJsonLd, productFaqItems } from "@/lib/editorialFaq";
+import { isProductIndexable } from "@/lib/indexing";
 
 /** Shop links still resolve on /go. The price shown is the stored listing price. */
 export const revalidate = 3600;
@@ -84,6 +85,7 @@ interface ProductData {
   media?: MediaItem[];
   videos?: VideoItem[];
   categories?: Category[];
+  seoReady?: boolean | null;
   seo?: {
     metaTitle?: string;
     metaDescription?: string;
@@ -171,6 +173,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       ...(ogImage ? { images: [ogImage] } : {}),
     },
+    ...(isProductIndexable(product) ? {} : { robots: "noindex,follow" }),
   };
 }
 
@@ -247,11 +250,11 @@ export default async function ProductPage({ params }: PageProps) {
               categories: { slug: { $eq: activeCategories[0].slug } },
               slug: { $ne: product.slug },
             },
-            pagination: { pageSize: 4 },
+            pagination: { pageSize: 12 },
             sort: ["trendScore:desc"],
           })
         : Promise.resolve({ data: [] }),
-      getListiclesForProduct(product.slug),
+      getListiclesForProduct(product.slug, 12),
     ]);
     relatedProducts = await resolveListingProducts(
       (relatedRes.data || []) as RelatedProduct[],
@@ -548,7 +551,7 @@ export default async function ProductPage({ params }: PageProps) {
         {relatedProducts.length > 0 && (
           <section className="mt-24">
             <SectionHeader
-              title="You Might Also Like"
+              title={`Related in ${activeCategories[0]?.name || "this category"}`}
               subtitle={`More from ${activeCategories[0]?.name || "this category"}`}
               viewAllHref={
                 activeCategories[0]
@@ -584,7 +587,7 @@ export default async function ProductPage({ params }: PageProps) {
         )}
 
         <HubLinks
-          title="Seen in these round-ups"
+          title="Guides"
           items={roundUps
             .filter((l) => l.slug && l.title)
             .map((l) => ({
