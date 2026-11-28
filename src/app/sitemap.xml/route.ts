@@ -1,23 +1,31 @@
 import { NextResponse } from 'next/server';
 import {
+  LEGAL_PAGE_LASTMOD,
+  LOOKUP_PAGE_LASTMOD,
   SITE_URL,
   SITEMAP_XML_HEADERS,
   fetchCategorySitemapEntries,
   fetchListiclesMaxLastmod,
   fetchProductMonthBuckets,
-  fetchSiteContentMaxLastmod,
   lastmodXml,
   latestIso,
 } from '@/lib/sitemap';
 
+export const revalidate = 600;
+
 export async function GET() {
-  const [pagesLastmod, categories, buckets, listsLastmod] = await Promise.all([
-    fetchSiteContentMaxLastmod(),
+  const [categories, buckets, listsLastmod] = await Promise.all([
     fetchCategorySitemapEntries(),
     fetchProductMonthBuckets(),
     fetchListiclesMaxLastmod(),
   ]);
   const categoriesLastmod = latestIso(...categories.map((cat) => cat.lastmod));
+  const pagesLastmod = latestIso(
+    listsLastmod,
+    ...buckets.map((bucket) => bucket.lastmod),
+    LEGAL_PAGE_LASTMOD,
+    LOOKUP_PAGE_LASTMOD,
+  );
 
   const productNodes = buckets
     .map(

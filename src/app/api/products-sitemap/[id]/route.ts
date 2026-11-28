@@ -16,11 +16,13 @@ import {
   strapiFetch,
   unwrapRow,
   toLastmod,
-  contentLastmod,
+  productSitemapLastmod,
   lastmodXml,
 } from '@/lib/sitemap';
 
 const MAX_IMAGES_PER_URL = 5;
+
+export const revalidate = 600;
 
 function escapeXml(s: string): string {
   return s
@@ -78,10 +80,9 @@ interface SitemapProduct {
   shortDescription?: string;
   description?: string;
   seoReady?: boolean | null;
-  contentUpdatedAt?: string | null;
-  sitePublishedAt?: string | null;
+  updatedAt?: string | null;
   createdAt?: string | null;
-  seo?: { structuredData?: { editorialIntro?: string | null } | null };
+  seo?: { structuredData?: { editorialIntro?: string | null; uniqueCopyAt?: string | null } | null };
   media?: SitemapMedia[];
   videos?: unknown;
 }
@@ -89,13 +90,12 @@ interface SitemapProduct {
 function productSitemapQuery(page: number, startDate: string, endDate: string): URLSearchParams {
   const params = new URLSearchParams({
     'fields[0]': 'slug',
-    'fields[1]': 'contentUpdatedAt',
-    'fields[2]': 'sitePublishedAt',
-    'fields[3]': 'createdAt',
-    'fields[4]': 'seoReady',
-    'fields[5]': 'name',
-    'fields[6]': 'shortDescription',
-    'fields[7]': 'description',
+    'fields[1]': 'updatedAt',
+    'fields[2]': 'createdAt',
+    'fields[3]': 'seoReady',
+    'fields[4]': 'name',
+    'fields[5]': 'shortDescription',
+    'fields[6]': 'description',
     'pagination[pageSize]': '100',
     'pagination[page]': String(page),
     'filters[createdAt][$gte]': startDate,
@@ -174,7 +174,7 @@ export async function GET(request: Request, context: { params: { id: string } | 
 
         urls += `
   <url>
-    <loc>${SITE_URL}/products/${product.slug}</loc>${lastmodXml(contentLastmod(product))}
+    <loc>${SITE_URL}/products/${product.slug}</loc>${lastmodXml(productSitemapLastmod(product))}
     <priority>0.8</priority>${imageBlocks}${videoBlock}
   </url>`;
       }

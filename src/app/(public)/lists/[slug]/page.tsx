@@ -3,8 +3,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import {
+  getGuideRelatedListicles,
   getListicleBySlug,
-  getRelatedListicles,
   getPublishedListicles,
 } from '@/lib/strapi';
 import { proxyImage } from '@/lib/imageProxy';
@@ -68,19 +68,13 @@ interface FullListicle {
   products?: ListicleProduct[];
   featuredImage?: { url?: string };
   categories?: Array<{ name?: string; slug?: string }>;
+  relatedListicles?: unknown;
   seo?: {
     metaTitle?: string;
     metaDescription?: string;
     canonicalUrl?: string;
     structuredData?: Record<string, unknown> | null;
   };
-}
-
-interface RelatedListicle {
-  title?: string;
-  slug?: string;
-  angleHook?: string;
-  priceTier?: string;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -192,7 +186,7 @@ export default async function ListiclePage({ params }: PageProps) {
     };
   });
 
-  const related = (await getRelatedListicles(slug, listicle.priceTier)) as RelatedListicle[];
+  const related = await getGuideRelatedListicles(listicle);
 
   // Collect product imagery for the hero collage — up to 4 picks, ordered to
   // match the listicle item order so the hero reflects the lead products.
@@ -224,41 +218,25 @@ export default async function ListiclePage({ params }: PageProps) {
     editorialLastmod(publishedIso, listicle.contentUpdatedAt) || publishedIso;
 
   // 1. ItemList — tells Google this is a ranked round-up
+  const itemListElement = items.flatMap((it, idx) => {
+    const product = productByCode[it.productCode || ''];
+    const name = it.headline || it.productName || product?.name;
+    const url = product?.slug ? `${SITE_URL}/products/${product.slug}` : undefined;
+    if (!name || !url) return [];
+    return [{
+      '@type': 'ListItem',
+      position: it.position ?? idx + 1,
+      name,
+      url,
+    }];
+  });
+
   const ldItemList = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     name: listicle.title,
-    numberOfItems: items.length,
-    itemListElement: items.map((it, idx) => {
-      const product = productByCode[it.productCode || ''];
-      return {
-        '@type': 'ListItem',
-        position: it.position ?? idx + 1,
-        name: it.headline || it.productName || product?.name,
-        url: product?.slug ? `${SITE_URL}/products/${product.slug}` : undefined,
-        item: product
-          ? {
-              '@type': 'Product',
-              name: product.name,
-              description: (it.commentary || product.shortDescription || '').slice(0, 240),
-              url: product.slug ? `${SITE_URL}/products/${product.slug}` : undefined,
-              offers: (() => {
-                const amount = priceOf(product);
-                const currency = (product.pricePoints?.[0]?.currency || 'USD').toUpperCase();
-                const page = product.slug ? `${SITE_URL}/products/${product.slug}` : undefined;
-                if (!page) return undefined;
-                return {
-                  '@type': 'Offer',
-                  url: page,
-                  ...(amount != null
-                    ? { price: amount.toFixed(2), priceCurrency: currency }
-                    : {}),
-                };
-              })(),
-            }
-          : undefined,
-      };
-    }),
+    numberOfItems: itemListElement.length,
+    itemListElement,
   };
 
   // 2. Article — editorial wrapper Google uses for richer SERP treatment
@@ -280,13 +258,19 @@ export default async function ListiclePage({ params }: PageProps) {
   };
 
   // 3. BreadcrumbList — Home › Round-ups › <title>
+  const breadcrumbItem = (position: number, name: string, url: string) => ({
+    '@type': 'ListItem',
+    position,
+    name,
+    item: { '@type': 'WebPage', '@id': url, url, name },
+  });
   const ldBreadcrumb = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-      { '@type': 'ListItem', position: 2, name: 'Round-ups', item: `${SITE_URL}/lists` },
-      { '@type': 'ListItem', position: 3, name: listicle.title, item: canonicalUrl },
+      breadcrumbItem(1, 'Home', SITE_URL),
+      breadcrumbItem(2, 'Round-ups', `${SITE_URL}/lists`),
+      breadcrumbItem(3, listicle.title || 'Round-up', canonicalUrl),
     ],
   };
 
