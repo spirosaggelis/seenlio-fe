@@ -349,6 +349,7 @@ export async function getListicleBySlug(slug: string) {
         },
       },
       categories: { fields: ['name', 'slug'] },
+      relatedListicles: { fields: ['title', 'slug', 'angleHook', 'listicleStatus'] },
     },
   });
   return (res.data?.[0] as Record<string, unknown> | undefined) || null;
@@ -389,6 +390,61 @@ export async function getListiclesForProduct(productSlug: string, limit = 4) {
     fields: ['title', 'slug', 'angleHook', 'publishedOn'],
   });
   return Array.isArray(res.data) ? (res.data as Record<string, unknown>[]) : [];
+}
+
+type GuidePointer = {
+  title?: string;
+  slug?: string;
+  angleHook?: string;
+  listicleStatus?: string;
+};
+
+function relationRows(value: unknown): GuidePointer[] {
+  if (!value) return [];
+  const raw = Array.isArray(value)
+    ? value
+    : value && typeof value === 'object' && Array.isArray((value as { data?: unknown[] }).data)
+      ? (value as { data: unknown[] }).data
+      : [];
+  return raw.map((row) => {
+    const record = row as { attributes?: GuidePointer };
+    return (record.attributes || row) as GuidePointer;
+  });
+}
+
+/** Curated related guides first, then other published guides in the same categories. */
+export async function getGuideRelatedListicles(listicle: {
+  slug?: string;
+  categories?: Array<{ slug?: string }>;
+  relatedListicles?: unknown;
+}): Promise<Array<{ title: string; slug: string; angleHook?: string }>> {
+  const picked: Array<{ title: string; slug: string; angleHook?: string }> = [];
+  const seen = new Set<string>(listicle.slug ? [listicle.slug] : []);
+  const push = (row: GuidePointer) => {
+    if (picked.length >= 4) return;
+    const slug = row.slug?.trim();
+    const title = row.title?.trim();
+    if (!slug || !title || seen.has(slug)) return;
+    if (row.listicleStatus && row.listicleStatus !== 'published') return;
+    seen.add(slug);
+    picked.push({ title, slug, angleHook: row.angleHook });
+  };
+
+  for (const row of relationRows(listicle.relatedListicles)) push(row);
+
+  const categorySlugs = [
+    ...new Set(
+      (listicle.categories || [])
+        .map((category) => category.slug)
+        .filter((slug): slug is string => Boolean(slug)),
+    ),
+  ];
+  for (const categorySlug of categorySlugs) {
+    if (picked.length >= 4) break;
+    const more = await getListiclesForCategory(categorySlug, 8);
+    for (const row of more) push(row as GuidePointer);
+  }
+  return picked;
 }
 
 export async function getListiclesForCategory(categorySlug: string, limit = 4) {

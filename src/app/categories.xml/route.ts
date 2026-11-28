@@ -6,6 +6,8 @@ import {
   lastmodXml,
 } from '@/lib/sitemap';
 
+export const revalidate = 600;
+
 export async function GET() {
   const categories = await fetchCategorySitemapEntries();
   const urls = categories

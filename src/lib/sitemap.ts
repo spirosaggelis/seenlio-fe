@@ -4,11 +4,14 @@ const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'
 const STRAPI_API_TOKEN = process.env.STRAPI_API_TOKEN;
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://seenlio.com';
-export const SITEMAP_REVALIDATE = 3600;
+export const LOOKUP_PAGE_LASTMOD = '2026-08-23T00:00:00.000Z';
+export const LEGAL_PAGE_LASTMOD = '2026-11-19T00:00:00.000Z';
+/** Short enough that a new guide or newly indexable product shows up within 10 minutes. */
+export const SITEMAP_REVALIDATE = 600;
 
 export const SITEMAP_XML_HEADERS = {
   'Content-Type': 'application/xml',
-  'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+  'Cache-Control': 'public, max-age=600, s-maxage=600',
 } as const;
 
 type StrapiListResponse = {
@@ -45,23 +48,15 @@ export function latestIso(...values: (string | Date | null | undefined)[]): stri
   return maxMs > 0 ? new Date(maxMs).toISOString() : null;
 }
 
-/**
- * Last content change for a URL. Ignores updatedAt so a bulk rewrite of
- * unrelated fields (video state, IndexNow stamp, sitemap rebuild) does not
- * move every URL.
- */
-export function contentLastmod(row: {
-  contentUpdatedAt?: string | null;
-  sitePublishedAt?: string | null;
-  publishedOn?: string | null;
-  createdAt?: string | null;
+/** Product sitemap lastmod: the later of the row update and the rewrite stamp. */
+export function productSitemapLastmod(row: {
+  updatedAt?: string | null;
+  seo?: {
+    structuredData?: { uniqueCopyAt?: string | null } | null;
+  } | null;
 }): string | null {
-  return (
-    toLastmod(row.contentUpdatedAt) ||
-    toLastmod(row.sitePublishedAt) ||
-    toLastmod(row.publishedOn) ||
-    toLastmod(row.createdAt)
-  );
+  const unique = row.seo?.structuredData?.uniqueCopyAt;
+  return latestIso(row.updatedAt, unique);
 }
 
 function withoutInvalidKey(params: URLSearchParams, keyName: string): URLSearchParams | null {
@@ -136,35 +131,16 @@ export function appendVisibleProductFilters(params: URLSearchParams): void {
   }
 }
 
-async function latestProductStamp(field: string, extra: Record<string, string> = {}): Promise<string | null> {
-  return fetchLatestField('products', field, {
-    ...PUBLISHED_VISIBLE_PRODUCT_FILTERS,
-    [`filters[${field}][$notNull]`]: 'true',
-    ...extra,
-  });
-}
-
-/** Newest description/title/price edit, else newest publish, else newest create. */
+/** Newest product URL lastmod across the month files. */
 export async function fetchProductsMaxContentLastmod(): Promise<string | null> {
-  const [content, published, created] = await Promise.all([
-    latestProductStamp('contentUpdatedAt'),
-    latestProductStamp('sitePublishedAt'),
-    latestProductStamp('createdAt'),
-  ]);
-  return latestIso(content, published, created);
+  const buckets = await fetchProductMonthBuckets();
+  return latestIso(...buckets.map((bucket) => bucket.lastmod));
 }
 
 export async function fetchListiclesMaxLastmod(): Promise<string | null> {
-  const filter = { 'filters[listicleStatus][$eq]': 'published' };
-  const [content, published, created] = await Promise.all([
-    fetchLatestField('listicles', 'contentUpdatedAt', {
-      ...filter,
-      'filters[contentUpdatedAt][$notNull]': 'true',
-    }),
-    fetchLatestField('listicles', 'publishedOn', filter),
-    fetchLatestField('listicles', 'createdAt', filter),
-  ]);
-  return latestIso(content, published, created);
+  return fetchLatestField('listicles', 'updatedAt', {
+    'filters[listicleStatus][$eq]': 'published',
+  });
 }
 
 /** Newest real content change across products and guides. */
@@ -183,9 +159,10 @@ export interface ProductMonthBucket {
 
 type SitemapClockProduct = IndexableProduct & {
   createdAt?: string;
-  contentUpdatedAt?: string | null;
-  sitePublishedAt?: string | null;
-  seo?: IndexableProduct['seo'];
+  updatedAt?: string | null;
+  seo?: IndexableProduct['seo'] & {
+    structuredData?: { editorialIntro?: string | null; uniqueCopyAt?: string | null } | null;
+  };
 };
 
 /** Published, indexable products grouped by createdAt month. */
@@ -197,9 +174,8 @@ export async function fetchProductMonthBuckets(): Promise<ProductMonthBucket[]> 
   while (hasMore) {
     const params = new URLSearchParams({
       'fields[0]': 'createdAt',
-      'fields[1]': 'contentUpdatedAt',
-      'fields[2]': 'sitePublishedAt',
-      'fields[3]': 'seoReady',
+      'fields[1]': 'updatedAt',
+      'fields[2]': 'seoReady',
       'pagination[pageSize]': '100',
       'pagination[page]': String(page),
       'populate[seo][fields][0]': 'structuredData',
@@ -214,7 +190,7 @@ export async function fetchProductMonthBuckets(): Promise<ProductMonthBucket[]> 
       if (!created || Number.isNaN(created.getTime())) continue;
 
       const monthId = `${created.getFullYear()}_${created.getMonth() + 1}`;
-      const stamp = contentLastmod(attrs);
+      const stamp = productSitemapLastmod(attrs);
       const stampMs = stamp ? new Date(stamp).getTime() : created.getTime();
       const prev = buckets.get(monthId) ?? 0;
       if (stampMs > prev) buckets.set(monthId, stampMs);
@@ -254,47 +230,29 @@ export interface CategorySitemapEntry {
   lastmod: string | null;
 }
 
-async function latestProductContentStamp(categorySlug: string): Promise<string | null> {
-  const extra = { 'filters[categories][slug][$eq]': categorySlug };
-  const [content, published, created] = await Promise.all([
-    latestProductStamp('contentUpdatedAt', extra),
-    latestProductStamp('sitePublishedAt', extra),
-    latestProductStamp('createdAt', extra),
-  ]);
-  return latestIso(content, published, created);
-}
-
-/** Category lastmod moves when a product in that category is published or its copy changes. */
+/** Category lastmod is the category record's own update time. */
 export async function fetchCategorySitemapEntries(): Promise<CategorySitemapEntry[]> {
-  const categories: Array<{ slug: string; createdAt?: string }> = [];
+  const categories: CategorySitemapEntry[] = [];
   let page = 1;
   let hasMore = true;
 
   while (hasMore) {
     const params = new URLSearchParams({
       'fields[0]': 'slug',
-      'fields[1]': 'createdAt',
+      'fields[1]': 'updatedAt',
       'pagination[pageSize]': '100',
       'pagination[page]': String(page),
       'filters[isActive][$eq]': 'true',
     });
     const data = await strapiFetch('/categories', params);
     for (const row of data.data || []) {
-      const cat = unwrapRow<{ slug?: string; createdAt?: string }>(row);
-      if (cat.slug) categories.push({ slug: cat.slug, createdAt: cat.createdAt });
+      const cat = unwrapRow<{ slug?: string; updatedAt?: string }>(row);
+      if (cat.slug) categories.push({ slug: cat.slug, lastmod: toLastmod(cat.updatedAt) });
     }
     const pageCount = data.meta?.pagination?.pageCount ?? 1;
     if (page < pageCount) page++;
     else hasMore = false;
   }
 
-  return Promise.all(
-    categories.map(async (cat) => {
-      const productStamp = await latestProductContentStamp(cat.slug);
-      return {
-        slug: cat.slug,
-        lastmod: latestIso(productStamp, cat.createdAt),
-      };
-    }),
-  );
+  return categories;
 }

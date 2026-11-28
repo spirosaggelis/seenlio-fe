@@ -4,36 +4,40 @@ import {
   SITEMAP_XML_HEADERS,
   strapiFetch,
   unwrapRow,
-  editorialLastmod,
+  toLastmod,
 } from '@/lib/sitemap';
 
 interface ListicleRow {
   slug?: string;
-  publishedOn?: string;
-  createdAt?: string;
-  contentUpdatedAt?: string | null;
+  updatedAt?: string;
   priorityScore?: number;
 }
+
+export const revalidate = 600;
 
 export async function GET() {
   const entries: ListicleRow[] = [];
 
   try {
-    const params = new URLSearchParams({
-      'fields[0]': 'slug',
-      'fields[1]': 'publishedOn',
-      'fields[2]': 'createdAt',
-      'fields[4]': 'contentUpdatedAt',
-      'fields[3]': 'priorityScore',
-      'filters[listicleStatus][$eq]': 'published',
-      'pagination[pageSize]': '200',
-      'sort[0]': 'publishedOn:desc',
-    });
-
-    const data = await strapiFetch('/listicles', params);
-    for (const row of data.data || []) {
-      const attrs = unwrapRow<ListicleRow>(row);
-      if (attrs.slug) entries.push(attrs);
+    let page = 1;
+    let pageCount = 1;
+    while (page <= pageCount && page <= 20) {
+      const params = new URLSearchParams({
+        'fields[0]': 'slug',
+        'fields[1]': 'updatedAt',
+        'fields[2]': 'priorityScore',
+        'filters[listicleStatus][$eq]': 'published',
+        'pagination[pageSize]': '100',
+        'pagination[page]': String(page),
+        'sort[0]': 'publishedOn:desc',
+      });
+      const data = await strapiFetch('/listicles', params);
+      for (const row of data.data || []) {
+        const attrs = unwrapRow<ListicleRow>(row);
+        if (attrs.slug) entries.push(attrs);
+      }
+      pageCount = data.meta?.pagination?.pageCount ?? 1;
+      page += 1;
     }
   } catch {
     /* suppress */
@@ -41,7 +45,7 @@ export async function GET() {
 
   const urls = entries
     .map((e) => {
-      const lastmod = editorialLastmod(e.publishedOn, e.contentUpdatedAt, e.createdAt);
+      const lastmod = toLastmod(e.updatedAt);
       const priority = Math.min(
         0.9,
         Math.max(0.5, 0.5 + ((e.priorityScore || 0) / 100) * 0.4),
